@@ -19,11 +19,12 @@ fun main(args: Array<String>) {
     while (true) {
         if (intput.read() == -1) {
             System.err.println("Input is empty!")
-            out.close()
+            break
         } else {
             out.write("+PONG\r\n".toByteArray())
-            out.flush()
+
         }
+        out.flush()
     }
 
 }
