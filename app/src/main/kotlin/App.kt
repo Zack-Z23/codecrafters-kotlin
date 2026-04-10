@@ -17,8 +17,7 @@ fun main(args: Array<String>) {
     val intput = client.getInputStream().bufferedReader().readText()
 
     while (true) {
-        if (intput == " ") {
-            System.err.println("Input is empty!")
+        if (intput == "") {
             break
         }
         out.write("+PONG\r\n".toByteArray())
