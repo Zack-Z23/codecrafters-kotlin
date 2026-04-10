@@ -14,6 +14,15 @@ fun main(args: Array<String>) {
 
     val client = serverSocket.accept()
     val out = client.getOutputStream()
-    out.write("+PONG\r\n".toByteArray())
+    val intput = client.getInputStream()
+
+    if(intput.read() == -1){
+        System.err.println("Input is empty!")
+        out.close()
+    }
+    else {
+        out.write("+PONG\r\n".toByteArray())
+    }
     out.flush()
+
 }
