@@ -20,10 +20,10 @@ fun main(args: Array<String>) {
         if (intput.read() == -1) {
             System.err.println("Input is empty!")
             break
-        } else {
-            out.write("+PONG\r\n".toByteArray())
-
         }
+        out.write("+PONG\r\n".toByteArray())
+
+
         out.flush()
     }
 
