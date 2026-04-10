@@ -17,9 +17,8 @@ fun main(args: Array<String>) {
     val intput = client.getInputStream().bufferedReader().readText()
 
     while (true) {
-        if (intput == "") {
-            break
-        }
+        if (input == null) break
+
         out.write("+PONG\r\n".toByteArray())
 
 
