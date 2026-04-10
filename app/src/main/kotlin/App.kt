@@ -14,10 +14,10 @@ fun main(args: Array<String>) {
 
     val client = serverSocket.accept()
     val out = client.getOutputStream()
-    val intput = client.getInputStream()
+    val intput = client.getInputStream().bufferedReader().readText()
 
     while (true) {
-        if (intput.read() == -1) {
+        if (intput == " ") {
             System.err.println("Input is empty!")
             break
         }
