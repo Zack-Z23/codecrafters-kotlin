@@ -16,13 +16,14 @@ fun main(args: Array<String>) {
     val out = client.getOutputStream()
     val intput = client.getInputStream()
 
-    if(intput.read() == -1){
-        System.err.println("Input is empty!")
-        out.close()
+    while (true) {
+        if (intput.read() == -1) {
+            System.err.println("Input is empty!")
+            out.close()
+        } else {
+            out.write("+PONG\r\n".toByteArray())
+            out.flush()
+        }
     }
-    else {
-        out.write("+PONG\r\n".toByteArray())
-    }
-    out.flush()
 
 }
