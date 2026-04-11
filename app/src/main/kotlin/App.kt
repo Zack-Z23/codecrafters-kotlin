@@ -20,7 +20,7 @@ fun main(args: Array<String>) {
         val out = client.getOutputStream()
         when (command[0].uppercase()) {
             "PING" -> out.write("+PONG\r\n".toByteArray())
-            "ECHO" -> out.write(command[1].toByteArray())
+            "ECHO" -> out.write("+${command[1]}\r\n".toByteArray())
         }
         out.flush()
     }
