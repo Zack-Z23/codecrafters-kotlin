@@ -19,9 +19,10 @@ fun main(args: Array<String>) {
         val command = parseCommand(input.bufferedReader())
         val out = client.getOutputStream()
         when (command[0].uppercase()) {
-            "PING" -> "PONG"
-            "ECHO" -> command[1]
+            "PING" -> out.write("+PONG\r\n".toByteArray())
+            "ECHO" -> out.write(command[1].toByteArray())
         }
+        out.flush()
     }
 
 }
