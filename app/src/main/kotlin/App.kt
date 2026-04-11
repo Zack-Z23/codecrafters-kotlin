@@ -14,15 +14,13 @@ fun main(args: Array<String>) {
 
     val client = serverSocket.accept()
     val out = client.getOutputStream()
-    val intput = client.getInputStream().bufferedReader().readText()
-
-    while (true) {
-        if (input == null) break
-
-        out.write("+PONG\r\n".toByteArray())
-
-
-        out.flush()
+    val input = client.getInputStream().bufferedReader()
+    var line: String?
+    while (input.readLine().also {line = it } != null) {
+        if(line == "PING"){
+            out.write("+PONG\r\n".toByteArray())
+            out.flush()
+        }
     }
 
 }
