@@ -20,7 +20,7 @@ fun main(args: Array<String>) {
         val out = client.getOutputStream()
         when (command[0].uppercase()) {
             "PING" -> "PONG"
-            "ECHO" -> "hey"
+            "ECHO" -> command[1]
         }
     }
 
