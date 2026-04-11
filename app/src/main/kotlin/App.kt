@@ -11,16 +11,17 @@ fun main(args: Array<String>) {
     // // ensures that we don't run into 'Address already in use' errors
      serverSocket.reuseAddress = true
 
-
+while(true) {
     val client = serverSocket.accept()
     val out = client.getOutputStream()
     val input = client.getInputStream().bufferedReader()
     var line: String?
-    while (input.readLine().also {line = it } != null) {
-        if(line == "PING"){
+    while (input.readLine().also { line = it } != null) {
+        val client = serverSocket.accept()
+        if (line == "PING") {
             out.write("+PONG\r\n".toByteArray())
             out.flush()
         }
     }
-
+}
 }
