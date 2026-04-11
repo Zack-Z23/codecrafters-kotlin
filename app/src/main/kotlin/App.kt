@@ -19,7 +19,6 @@ while(true) {
         val input = client.getInputStream().bufferedReader()
         var line: String?
         while (input.readLine().also { line = it } != null) {
-            val client = serverSocket.accept()
             if (line == "PING") {
                 out.write("+PONG\r\n".toByteArray())
                 out.flush()
