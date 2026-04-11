@@ -15,17 +15,20 @@ fun main(args: Array<String>) {
 
     while (true) {
         val client = serverSocket.accept()
-        val input = client.getInputStream()
-        val command = parseCommand(input.bufferedReader())
-        val out = client.getOutputStream()
         thread {
-            when (command[0].uppercase()) {
-                "PING" -> out.write("+PONG\r\n".toByteArray())
-                "ECHO" -> out.write("$${command[1].length}\r\n${command[1]}\r\n".toByteArray())
+            val input = client.getInputStream()
+            val command = parseCommand(input.bufferedReader())
+            val out = client.getOutputStream()
+            while(true) {
+                when (command[0].uppercase()) {
+                    "PING" -> out.write("+PONG\r\n".toByteArray())
+                    "ECHO" -> out.write("$${command[1].length}\r\n${command[1]}\r\n".toByteArray())
+                }
+                out.flush()
             }
         }
-        out.flush()
     }
+
 }
 
 fun parseCommand(reader : BufferedReader) : List<String> {
