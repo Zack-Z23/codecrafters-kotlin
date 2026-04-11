@@ -23,8 +23,8 @@ fun main(args: Array<String>) {
                 "PING" -> out.write("+PONG\r\n".toByteArray())
                 "ECHO" -> out.write("$${command[1].length}\r\n${command[1]}\r\n".toByteArray())
             }
-            out.flush()
         }
+        out.flush()
     }
 }
 
