@@ -1,3 +1,4 @@
+import java.io.BufferedReader
 import java.net.ServerSocket
 import kotlin.concurrent.thread
 
@@ -12,18 +13,30 @@ fun main(args: Array<String>) {
     // // ensures that we don't run into 'Address already in use' errors
      serverSocket.reuseAddress = true
 
-while(true) {
-    val client = serverSocket.accept()
-    thread {
+    while (true) {
+        val client = serverSocket.accept()
+        val input = client.getInputStream()
+        val command = parseCommand(input.bufferedReader())
         val out = client.getOutputStream()
-        val input = client.getInputStream().bufferedReader()
-        var line: String?
-        while (input.readLine().also { line = it } != null) {
-            if (line == "PING") {
-                out.write("+PONG\r\n".toByteArray())
-                out.flush()
-            }
+        when (command[0].uppercase()) {
+            "PING" -> "PONG"
+            "ECHO" -> "hey"
         }
     }
+
 }
+
+fun parseCommand(reader : BufferedReader) : List<String> {
+    val firstLine = reader.readLine()
+    val numElements = firstLine.substring(1).toInt()
+    val result = mutableListOf<String>()
+
+    repeat(numElements) {
+        reader.readLine()
+        val value = reader.readLine()
+        result.add(value)
+
+    }
+    return result
+
 }
