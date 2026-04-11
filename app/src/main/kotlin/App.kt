@@ -1,4 +1,5 @@
 import java.net.ServerSocket
+import kotlin.concurrent.thread
 
 fun main(args: Array<String>) {
     // You can use print statements as follows for debugging, they'll be visible when running tests.
@@ -13,14 +14,16 @@ fun main(args: Array<String>) {
 
 while(true) {
     val client = serverSocket.accept()
-    val out = client.getOutputStream()
-    val input = client.getInputStream().bufferedReader()
-    var line: String?
-    while (input.readLine().also { line = it } != null) {
-        val client = serverSocket.accept()
-        if (line == "PING") {
-            out.write("+PONG\r\n".toByteArray())
-            out.flush()
+    thread {
+        val out = client.getOutputStream()
+        val input = client.getInputStream().bufferedReader()
+        var line: String?
+        while (input.readLine().also { line = it } != null) {
+            val client = serverSocket.accept()
+            if (line == "PING") {
+                out.write("+PONG\r\n".toByteArray())
+                out.flush()
+            }
         }
     }
 }
