@@ -24,7 +24,8 @@ fun main(args: Array<String>) {
                 when (command[0].uppercase()) {
                     "PING" -> out.write("+PONG\r\n".toByteArray())
                     "ECHO" -> out.write("$${command[1].length}\r\n${command[1]}\r\n".toByteArray())
-
+                    "SET" -> out.write("+OK\r\n".toByteArray())
+                    "GET ${command[1]}" -> out.write("$${command[2].length}\r\n${command[2]}\r\n".toByteArray())
                 }
                 out.flush()
             }
