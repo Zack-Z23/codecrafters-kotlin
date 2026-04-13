@@ -18,8 +18,8 @@ fun main(args: Array<String>) {
         thread {
             val input = client.getInputStream()
             val out = client.getOutputStream()
-            val command = parseCommand(input.bufferedReader())
             while(true) {
+                val command = parseCommand(input.bufferedReader())
                 if (command == null) break
                 when (command[0].uppercase()) {
                     "PING" -> out.write("+PONG\r\n".toByteArray())
