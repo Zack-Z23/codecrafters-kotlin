@@ -62,6 +62,9 @@ fun main(args: Array<String>) {
                             out.write("$${value?.length}\r\n${value}\r\n".toByteArray())
                         }
                     }
+                    "RPUSH" -> {
+                        
+                    }
 
                 }
                 out.flush()
