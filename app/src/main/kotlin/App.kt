@@ -45,9 +45,9 @@ fun main(args: Array<String>) {
                             if( value == null || expiry <= System.currentTimeMillis()) {
                                 out.write("$-1\r\n".toByteArray())
                             }
-                        }
-                        else {
-                            out.write("$${value?.length}\r\n${value}\r\n".toByteArray())
+                            else {
+                                out.write("$${value.length}\r\n${value}\r\n".toByteArray())
+                            }
                         }
                     }
 
