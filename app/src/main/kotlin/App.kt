@@ -13,7 +13,7 @@ fun main(args: Array<String>) {
     // // Since the tester restarts your program quite often, setting SO_REUSEADDR
     // // ensures that we don't run into 'Address already in use' errors
      serverSocket.reuseAddress = true
-    val store = java.util.concurrent.ConcurrentHashMap<String, Pair<String, Long>>()
+    val store = java.util.concurrent.ConcurrentHashMap<String, Pair<String, Long?>>()
     while (true) {
         val client = serverSocket.accept()
         thread {
@@ -26,15 +26,24 @@ fun main(args: Array<String>) {
                     "PING" -> out.write("+PONG\r\n".toByteArray())
                     "ECHO" -> out.write("$${command[1].length}\r\n${command[1]}\r\n".toByteArray())
                     "SET" -> {
-                        if(command[3] != null) {
-                            when(command[3].uppercase()) {
-                                "EX" -> store[command[1]] = Pair(command[2], System.currentTimeMillis() + (command[4].toLong() * 1000 ))
-                                "PX" -> store[command[1]] = Pair(command[2], System.currentTimeMillis() + command[4].toLong())
+                        if (command.size >= 5) {
+                            if (command[3] != null) {
+                                when (command[3].uppercase()) {
+                                    "EX" -> store[command[1]] =
+                                        Pair(command[2], System.currentTimeMillis() + (command[4].toLong() * 1000))
 
+                                    "PX" -> store[command[1]] =
+                                        Pair(command[2], System.currentTimeMillis() + command[4].toLong())
+
+                                }
                             }
-                        }
-                        out.write("+OK\r\n".toByteArray())
+                            out.write("+OK\r\n".toByteArray())
 
+                        }
+                        else{
+                            store[command[1]] = Pair(command[2], null)
+                            out.write("+OK\r\n".toByteArray())
+                        }
                     }
 
                     "GET" -> {
@@ -48,6 +57,9 @@ fun main(args: Array<String>) {
                             else {
                                 out.write("$${value.length}\r\n${value}\r\n".toByteArray())
                             }
+                        }
+                        else {
+                            out.write("$${value?.length}\r\n${value}\r\n".toByteArray())
                         }
                     }
 
