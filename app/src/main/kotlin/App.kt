@@ -46,8 +46,9 @@ fun main(args: Array<String>) {
                                 out.write("$-1\r\n".toByteArray())
                             }
                         }
-                        out.write("$${value?.length}\r\n${value}\r\n".toByteArray())
-
+                        else {
+                            out.write("$${value?.length}\r\n${value}\r\n".toByteArray())
+                        }
                     }
 
                 }
