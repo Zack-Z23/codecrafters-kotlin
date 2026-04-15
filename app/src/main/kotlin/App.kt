@@ -41,8 +41,10 @@ fun main(args: Array<String>) {
                         val entry = store[command[1]]
                         val value = entry?.first
                         val expiry = entry?.second
-                        if( value == null || expiry == null) {
-                            out.write("$-1\r\n".toByteArray())
+                        if (expiry != null) {
+                            if( value == null || expiry <= System.currentTimeMillis()) {
+                                out.write("$-1\r\n".toByteArray())
+                            }
                         }
                         out.write("$${value?.length}\r\n${value}\r\n".toByteArray())
 
