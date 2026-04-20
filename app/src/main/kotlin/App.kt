@@ -14,6 +14,7 @@ fun main(args: Array<String>) {
     // // ensures that we don't run into 'Address already in use' errors
      serverSocket.reuseAddress = true
     val store = java.util.concurrent.ConcurrentHashMap<String, Pair<String, Long?>>()
+    val listOflists = java.util.concurrent.ConcurrentHashMap<String, MutableList<String>>()
     while (true) {
         val client = serverSocket.accept()
         thread {
@@ -61,6 +62,41 @@ fun main(args: Array<String>) {
                         else {
                             out.write("$${value?.length}\r\n${value}\r\n".toByteArray())
                         }
+                    }
+                    "RPUSH" -> {
+                        if(!listOflists.containsKey(command[1])) {
+                            listOflists[command[1]] = mutableListOf()
+                        }
+                        var i = 2
+                        while (command.size >= 3 && i < command.size) {
+                            listOflists[command[1]]!!.add(command[i])
+                            i++
+                            //commmand [2] = apple
+                            //command [3] = orange
+                            // array = 0 1 2 3
+                        }
+                        out.write(":${listOflists[command[1]]?.size}\r\n".toByteArray())
+                    }
+                    "LRANGE" -> {
+                        val startIndex = command[2].toInt()
+                        var endIndex = command[3].toInt()
+                        val list = listOflists[command[1]]
+
+                        if(list == null){
+                            out.write("*0\r\n".toByteArray())
+                        }
+                        else{
+
+                            if(endIndex >= list.size){
+                                endIndex = list.size - 1
+                            }
+                            out.write("*${endIndex - startIndex + 1}\r\n".toByteArray())
+                            for(i in startIndex .. endIndex){
+
+                                out.write("$${list[i].length}\r\n${list[i]}\r\n".toByteArray())
+                            }
+                        }
+
                     }
 
                 }
