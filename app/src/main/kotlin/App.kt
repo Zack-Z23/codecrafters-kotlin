@@ -87,11 +87,11 @@ fun main(args: Array<String>) {
                         }
                         else{
                             out.write("*${endIndex - startIndex + 1}\r\n".toByteArray())
-
+                            if(endIndex >= list.size){
+                                endIndex = list.size - 1
+                            }
                             for(i in startIndex .. endIndex){
-                                if(endIndex >= list.size){
-                                    endIndex = list.size - 1
-                                }
+
                                 out.write("$${list[i].length}\r\n${list[i]}\r\n".toByteArray())
                             }
                         }
