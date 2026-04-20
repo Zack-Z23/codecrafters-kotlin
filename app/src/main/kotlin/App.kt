@@ -67,9 +67,12 @@ fun main(args: Array<String>) {
                         if(!listOflists.containsKey(command[1])) {
                             listOflists[command[1]] = mutableListOf()
                         }
-
-                            listOflists[command[1]]!!.add(command[2])
-                            out.write(":${listOflists[command[1]]?.size}\r\n".toByteArray())
+                        var i = 3
+                        while (command.size  > 3 && i < command.size) {
+                            listOflists[command[1]]!!.add(command[i])
+                            i++
+                        }
+                        out.write(":${listOflists[command[1]]?.size}\r\n".toByteArray())
                     }
 
                 }
