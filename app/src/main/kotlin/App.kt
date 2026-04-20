@@ -80,22 +80,19 @@ fun main(args: Array<String>) {
                     "LRANGE" -> {
                         val startIndex = command[2].toInt()
                         val endIndex = command[3].toInt()
-                        var i = 0
-                        var d = 0
-                        if (!listOflists.containsKey(command[1])) {
-                            if(listOflists.equals(command[1])) {
-                                    for(i in (startIndex)..<endIndex) {
-                                        out.write("${d++}\r\n".toByteArray())
-                                        out.write("${listOflists[command[1]]?.elementAt(i)}\r\n".toByteArray())
+                        val list = listOflists[command[1]]
 
-                                    }
-                                
-                                //Element at blah
-                                // returns value
-                                // val x:
-                                // type caSt the fucking peice of shiut asss stupid fucjkuibg type cast kotkiun the dashdsalkjdlaskjdlk;asd;'lksajdl?
+                        if(list == null){
+                            out.write("*0\r\n".toByteArray())
+                        }
+                        else{
+                            out.write("*${endIndex - startIndex + 1}\r\n".toByteArray())
+
+                            for(i in startIndex .. endIndex){
+                                out.write("$${list[i].length}\r\n${list[i]}\r\n".toByteArray())
                             }
                         }
+
                     }
 
                 }
