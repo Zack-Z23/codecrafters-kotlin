@@ -84,13 +84,12 @@ fun main(args: Array<String>) {
                         var d = 0
                         if (!listOflists.containsKey(command[1])) {
                             if(listOflists.equals(command[1])) {
-                                while(i < listOflists[command[1]]!!.size) {
-                                    if(i > startIndex && i < endIndex) {
+                                    for(i in (startIndex)..<endIndex) {
                                         out.write("${d++}\r\n".toByteArray())
                                         out.write("${listOflists[command[1]]?.elementAt(i)}\r\n".toByteArray())
-                                        i++
+
                                     }
-                                }
+                                
                                 //Element at blah
                                 // returns value
                                 // val x:
