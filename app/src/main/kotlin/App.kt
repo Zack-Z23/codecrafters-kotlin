@@ -79,7 +79,7 @@ fun main(args: Array<String>) {
                     }
                     "LRANGE" -> {
                         val startIndex = command[2].toInt()
-                        val endIndex = command[3].toInt()
+                        var endIndex = command[3].toInt()
                         val list = listOflists[command[1]]
 
                         if(list == null){
@@ -87,9 +87,11 @@ fun main(args: Array<String>) {
                         }
                         else{
                             out.write("*${endIndex - startIndex + 1}\r\n".toByteArray())
-                       
+
                             for(i in startIndex .. endIndex){
-                                if(endIndex >= list.size) break
+                                if(endIndex >= list.size){
+                                    endIndex = list.size - 1
+                                }
                                 out.write("$${list[i].length}\r\n${list[i]}\r\n".toByteArray())
                             }
                         }
