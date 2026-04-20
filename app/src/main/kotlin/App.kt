@@ -68,7 +68,7 @@ fun main(args: Array<String>) {
                             listOflists[command[1]] = mutableListOf()
                         }
                         var i = 2
-                        while (command.size >= 3 && i <= command.size) {
+                        while (command.size > 3 && i < command.size) {
                             listOflists[command[1]]!!.add(command[i])
                             i++
                         }
