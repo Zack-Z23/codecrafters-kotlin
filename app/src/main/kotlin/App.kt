@@ -77,6 +77,27 @@ fun main(args: Array<String>) {
                         }
                         out.write(":${listOflists[command[1]]?.size}\r\n".toByteArray())
                     }
+                    "LRANGE" -> {
+                        val startIndex = command[2].toInt()
+                        val endIndex = command[3].toInt()
+                        var i = 0
+                        var d = 0
+                        if (!listOflists.containsKey(command[1])) {
+                            if(listOflists.equals(command[1])) {
+                                while(i < listOflists[command[1]]!!.size) {
+                                    if(i > startIndex && i < endIndex) {
+                                        out.write("${d++}\r\n".toByteArray())
+                                        out.write("${listOflists[command[1]]?.elementAt(i)}\r\n".toByteArray())
+                                        i++
+                                    }
+                                }
+                                //Element at blah
+                                // returns value
+                                // val x:
+                                // type caSt the fucking peice of shiut asss stupid fucjkuibg type cast kotkiun the dashdsalkjdlaskjdlk;asd;'lksajdl?
+                            }
+                        }
+                    }
 
                 }
                 out.flush()
