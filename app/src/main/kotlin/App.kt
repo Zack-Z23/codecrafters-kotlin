@@ -14,6 +14,7 @@ fun main(args: Array<String>) {
     // // ensures that we don't run into 'Address already in use' errors
      serverSocket.reuseAddress = true
     val store = java.util.concurrent.ConcurrentHashMap<String, Pair<String, Long?>>()
+    val listOflists = java.util.concurrent.ConcurrentHashMap<String, MutableList<String>>()
     while (true) {
         val client = serverSocket.accept()
         thread {
@@ -63,7 +64,19 @@ fun main(args: Array<String>) {
                         }
                     }
                     "RPUSH" -> {
-                        
+                        if(!listOflists.containsKey(command[1])) {
+                            listOflists[command[1]] = mutableListOf()
+
+
+                            //if it doesnt then we create a new list
+                            //in the list you can create different elements.
+                            // foo will be at index 1
+                            // bar will be at index 2
+                            // and so on
+                        }
+
+                            listOflists[command[1]]!!.add(command[2])
+                            out.write(":${listOflists[command[1]]?.size}\r\n".toByteArray())
                     }
 
                 }
