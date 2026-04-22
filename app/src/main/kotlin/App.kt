@@ -90,17 +90,20 @@ fun main(args: Array<String>) {
                             if(startIndex <= -1) {
                                 startIndex = startIndex * -1
                                 if(startIndex > list.size){
-                                    startIndex = 0
+                                    startIndex = (list?.size?.minus(1))!!
                                 }
-                                startIndex = (list?.size?.minus(startIndex))!!
-
+                                else {
+                                    startIndex = (list?.size?.minus(startIndex))!!
+                                }
                             }
                             if(endIndex <= -1) {
                                 endIndex = endIndex * -1
                                 if(endIndex > list.size){
-                                    endIndex = 0
+                                    endIndex = (list?.size?.minus(1))!!
                                 }
-                                endIndex = (list?.size?.minus(endIndex))!!
+                                else {
+                                    endIndex = (list?.size?.minus(endIndex))!!
+                                }
                             }
                             if(endIndex >= list.size){
                                 endIndex = list.size - 1
