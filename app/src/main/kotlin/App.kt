@@ -146,9 +146,13 @@ fun main(args: Array<String>) {
                         if(!listOflists.containsKey(command[1])) {
                             out.write("$-1\r\n".toByteArray())
                         }
+                        var i = 0
                         val list = listOflists[command[1]]!!
-                        out.write("$${list[0].length}\r\n${list[0]}\r\n".toByteArray())
-                        listOflists[command[1]]!!.removeFirst()
+                        while (i < command[2].toInt()) {
+                            out.write("$${list[0].length}\r\n${list[0]}\r\n".toByteArray())
+                            listOflists[command[1]]!!.removeFirst()
+                            i++
+                        }
                     }
 
 
