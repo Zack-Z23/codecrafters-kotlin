@@ -87,7 +87,7 @@ fun main(args: Array<String>) {
                         }
 
                         else{
-                            if(startIndex == -1) {
+                            if(startIndex <= -1) {
                                 startIndex = startIndex * -1
                                 if(startIndex > list.size){
                                     startIndex = 0
@@ -95,7 +95,7 @@ fun main(args: Array<String>) {
                                 startIndex = (list?.size?.minus(startIndex))?.minus(1)!!
 
                             }
-                            if(endIndex == -1) {
+                            if(endIndex <= -1) {
                                 endIndex = endIndex * -1
                                 if(endIndex > list.size){
                                     endIndex = 0
