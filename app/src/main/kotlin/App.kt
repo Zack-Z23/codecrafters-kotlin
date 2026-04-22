@@ -92,6 +92,7 @@ fun main(args: Array<String>) {
                                 if(startIndex > list.size){
                                     startIndex = 0
                                 }
+                                startIndex -= list.size
                                 startIndex = (list?.size?.minus(startIndex))!!
 
                             }
