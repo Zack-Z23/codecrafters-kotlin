@@ -138,7 +138,7 @@ fun main(args: Array<String>) {
                             out.write("*0\r\n".toByteArray())
                         }
                         else {
-                            out.write(":${listOflists[command[1]]?.size}\r\n".toByteArray())
+                            out.write(":${listOflists[command[1]]?.size?.toInt()}\r\n".toByteArray())
                         }
                 }
 
