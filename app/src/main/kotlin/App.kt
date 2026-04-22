@@ -90,11 +90,11 @@ fun main(args: Array<String>) {
                             if(startIndex <= -1) {
                                 startIndex = startIndex * -1
                                 if(startIndex > list.size){
-                                    startIndex = (list?.size?.minus(1))!!
+                                    startIndex = 0
                                 }
-                                else {
+
                                     startIndex = (list?.size?.minus(startIndex))!!
-                                }
+
                             }
                             if(endIndex <= -1) {
                                 endIndex = endIndex * -1
