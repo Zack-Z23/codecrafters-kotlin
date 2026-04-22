@@ -149,13 +149,11 @@ fun main(args: Array<String>) {
                         var i = 0
                         val list = listOflists[command[1]]!!
 
-                        out.write("*${list.size}\r\n".toByteArray())
+                        out.write("*${command[2].toInt()}\r\n".toByteArray())
                         while (i < command[2].toInt()) {
-                            out.write("*${command[2].toInt()}\r\n".toByteArray())
                             out.write("$${list[0].length}\r\n${list[0]}\r\n".toByteArray())
                             list.removeFirst()
                             i++
-
                         }
                     }
 
