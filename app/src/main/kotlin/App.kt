@@ -135,10 +135,10 @@ fun main(args: Array<String>) {
                     "LLEN" -> {
                         if(!listOflists.containsKey(command[1])) {
                             listOflists[command[1]] = mutableListOf()
-                            out.write("*0\r\n".toByteArray())
+                            out.write(":0\r\n".toByteArray())
                         }
                         else {
-                            out.write(":${listOflists[command[1]]?.size?.toInt()}\r\n".toByteArray())
+                            out.write(":${listOflists[command[1]]?.size}\r\n".toByteArray())
                         }
                 }
 
