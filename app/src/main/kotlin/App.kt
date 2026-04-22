@@ -78,18 +78,38 @@ fun main(args: Array<String>) {
                         out.write(":${listOflists[command[1]]?.size}\r\n".toByteArray())
                     }
                     "LRANGE" -> {
-                        val startIndex = command[2].toInt()
+                        var startIndex: Int = command[2].toInt()
                         var endIndex = command[3].toInt()
                         val list = listOflists[command[1]]
 
                         if(list == null){
                             out.write("*0\r\n".toByteArray())
                         }
-                        else{
 
+                        else{
+                            if(startIndex <= -1) {
+                                startIndex = startIndex * -1
+                                if(startIndex > list.size){
+                                    startIndex = 0
+
+                                    startIndex = list.size - startIndex
+                                }
+                                startIndex = (list?.size?.minus(startIndex))!!
+
+                            }
+                            if(endIndex <= -1) {
+                                endIndex = endIndex * -1
+                                if(endIndex > list.size){
+                                    endIndex = (list?.size?.minus(1))!!
+                                }
+                                else {
+                                    endIndex = (list?.size?.minus(endIndex))!!
+                                }
+                            }
                             if(endIndex >= list.size){
                                 endIndex = list.size - 1
                             }
+
                             out.write("*${endIndex - startIndex + 1}\r\n".toByteArray())
                             for(i in startIndex .. endIndex){
 
@@ -98,6 +118,55 @@ fun main(args: Array<String>) {
                         }
 
                     }
+                    "LPUSH" -> {
+                        if(!listOflists.containsKey(command[1])) {
+                            listOflists[command[1]] = mutableListOf()
+                        }
+                        var i = 2
+                        while (command.size >= 3 && i < command.size) {
+                            listOflists[command[1]]!!.addFirst(command[i])
+                            i++
+                            //commmand [2] = apple
+                            //command [3] = orange
+                            // array = 0 1 2 3
+                        }
+                        out.write(":${listOflists[command[1]]?.size}\r\n".toByteArray())
+                    }
+                    "LLEN" -> {
+                        if(!listOflists.containsKey(command[1])) {
+                            listOflists[command[1]] = mutableListOf()
+                            out.write(":0\r\n".toByteArray())
+                        }
+                        else {
+                            out.write(":${listOflists[command[1]]?.size}\r\n".toByteArray())
+                        }
+
+                    }
+                    "LPOP" -> {
+                        var i = 0
+                        val list = listOflists[command[1]]!!
+                        if(!listOflists.containsKey(command[1])) {
+                            out.write("$-1\r\n".toByteArray())
+
+                        }
+
+                        else {
+                            if( command.size >= 3) {
+
+                                out.write("*${command[2].toInt()}\r\n".toByteArray())
+                                while (i < command[2].toInt()) {
+                                    out.write("$${list[0].length}\r\n${list[0]}\r\n".toByteArray())
+                                    list.removeFirst()
+                                    i++
+                                }
+                            }
+                            else{
+                                out.write("$${list[0].length}\r\n${list[0]}\r\n".toByteArray())
+                                list.removeFirst()
+                            }
+                        }
+                    }
+
 
                 }
                 out.flush()
