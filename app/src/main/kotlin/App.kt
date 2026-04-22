@@ -140,7 +140,17 @@ fun main(args: Array<String>) {
                         else {
                             out.write(":${listOflists[command[1]]?.size}\r\n".toByteArray())
                         }
-                }
+
+                    }
+                    "LPOP" -> {
+                        if(!listOflists.containsKey(command[1])) {
+                            out.write("$-1\r\n".toByteArray())
+                        }
+                        val list = listOflists[command[1]]!!
+                        out.write("${list[0].length}\r\n${list[0]}\r\n".toByteArray())
+                        listOflists[command[1]]!!.removeFirst()
+                    }
+
 
                 }
                 out.flush()
