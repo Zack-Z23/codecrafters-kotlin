@@ -118,6 +118,20 @@ fun main(args: Array<String>) {
                         }
 
                     }
+                    "LPUSH" -> {
+                        if(!listOflists.containsKey(command[1])) {
+                            listOflists[command[1]] = mutableListOf()
+                        }
+                        var i = 2
+                        while (command.size >= 3 && i < command.size) {
+                            listOflists[command[1]]!!.addFirst(command[i])
+                            i++
+                            //commmand [2] = apple
+                            //command [3] = orange
+                            // array = 0 1 2 3
+                        }
+                        out.write(":${listOflists[command[1]]?.size}\r\n".toByteArray())
+                    }
 
                 }
                 out.flush()
