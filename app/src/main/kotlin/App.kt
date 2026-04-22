@@ -78,18 +78,34 @@ fun main(args: Array<String>) {
                         out.write(":${listOflists[command[1]]?.size}\r\n".toByteArray())
                     }
                     "LRANGE" -> {
-                        val startIndex = command[2].toInt()
+                        var startIndex: Int = command[2].toInt()
                         var endIndex = command[3].toInt()
                         val list = listOflists[command[1]]
 
                         if(list == null){
                             out.write("*0\r\n".toByteArray())
                         }
-                        else{
 
+                        else{
+                            if(startIndex == -1) {
+                                startIndex = startIndex * -1
+                                if(startIndex > list.size){
+                                    startIndex = 0
+                                }
+                                startIndex = (list?.size?.minus(startIndex))?.minus(1)!!
+
+                            }
+                            if(endIndex == -1) {
+                                endIndex = endIndex * -1
+                                if(endIndex > list.size){
+                                    endIndex = 0
+                                }
+                                endIndex = (list?.size?.minus(endIndex))?.minus(1)!!
+                            }
                             if(endIndex >= list.size){
                                 endIndex = list.size - 1
                             }
+
                             out.write("*${endIndex - startIndex + 1}\r\n".toByteArray())
                             for(i in startIndex .. endIndex){
 
