@@ -143,17 +143,27 @@ fun main(args: Array<String>) {
 
                     }
                     "LPOP" -> {
-                        if(!listOflists.containsKey(command[1])) {
-                            out.write("$-1\r\n".toByteArray())
-                        }
                         var i = 0
                         val list = listOflists[command[1]]!!
+                        if(!listOflists.containsKey(command[1])) {
+                            out.write("$-1\r\n".toByteArray())
 
-                        out.write("*${command[2].toInt()}\r\n".toByteArray())
-                        while (i < command[2].toInt()) {
-                            out.write("$${list[0].length}\r\n${list[0]}\r\n".toByteArray())
-                            list.removeFirst()
-                            i++
+                        }
+
+                        else {
+                            if( command.size >= 3) {
+
+                                out.write("*${command[2].toInt()}\r\n".toByteArray())
+                                while (i < command[2].toInt()) {
+                                    out.write("$${list[0].length}\r\n${list[0]}\r\n".toByteArray())
+                                    list.removeFirst()
+                                    i++
+                                }
+                            }
+                            else{
+                                out.write("$${list[0].length}\r\n${list[0]}\r\n".toByteArray())
+                                list.removeFirst()
+                            }
                         }
                     }
 
