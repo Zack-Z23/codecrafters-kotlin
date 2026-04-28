@@ -286,6 +286,62 @@ fun main(args: Array<String>) {
                             }
                         }
                     }
+                    "XRANGE" -> {
+                        val key = command[1]
+                        val startRaw = command[2]
+                        val endRaw = command[3]
+
+                        val stream = streams[key]
+
+                        if (stream == null || stream.isEmpty()) {
+                            out.write("*0\r\n".toByteArray())
+                        } else {
+                            fun parseStart(id: String): Pair<Long, Long> {
+                                return if (id.contains("-")) {
+                                    val p = id.split("-")
+                                    Pair(p[0].toLong(), p[1].toLong())
+                                } else {
+                                    Pair(id.toLong(), 0L)
+                                }
+                            }
+
+                            fun parseEnd(id: String): Pair<Long, Long> {
+                                return if (id.contains("-")) {
+                                    val p = id.split("-")
+                                    Pair(p[0].toLong(), p[1].toLong())
+                                } else {
+                                    Pair(id.toLong(), Long.MAX_VALUE)
+                                }
+                            }
+
+                            val (startMs, startSeq) = parseStart(startRaw)
+                            val (endMs, endSeq) = parseEnd(endRaw)
+
+                            val filtered = stream.filter {
+                                val parts = it.first.split("-")
+                                val ms = parts[0].toLong()
+                                val seq = parts[1].toLong()
+
+                                (ms > startMs || (ms == startMs && seq >= startSeq)) &&
+                                        (ms < endMs || (ms == endMs && seq <= endSeq))
+                            }
+
+                            out.write("*${filtered.size}\r\n".toByteArray())
+
+                            for ((id, fields) in filtered) {
+                                out.write("*2\r\n".toByteArray())
+
+                                out.write("$${id.length}\r\n${id}\r\n".toByteArray())
+
+                                val flat = fields.entries.flatMap { listOf(it.key, it.value) }
+                                out.write("*${flat.size}\r\n".toByteArray())
+
+                                for (v in flat) {
+                                    out.write("$${v.length}\r\n${v}\r\n".toByteArray())
+                                }
+                            }
+                        }
+                    }
 
                 }
                 out.flush()
