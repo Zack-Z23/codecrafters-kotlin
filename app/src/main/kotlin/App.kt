@@ -193,6 +193,17 @@ fun main(args: Array<String>) {
                             out.write("$${value?.length}\r\n${value}\r\n".toByteArray())
                         }
                     }
+                    "TYPE" -> {
+
+                            val key = command[1]
+                            if (store.containsKey(key)) {
+                                out.write("+string\r\n".toByteArray())
+                            } else if (listOflists.containsKey(key)) {
+                                out.write("+list\r\n".toByteArray())
+                            } else {
+                                out.write("+none\r\n".toByteArray())
+                            }
+                    }
                 }
                 out.flush()
             }
