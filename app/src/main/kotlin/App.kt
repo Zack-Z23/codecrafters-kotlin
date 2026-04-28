@@ -418,10 +418,16 @@ fun main(args: Array<String>) {
                                     }
                                     break
                                 }
-
                                 if (blockTime == null) {
                                     out.write("*0\r\n".toByteArray())
                                     break
+                                }
+
+                                if (blockTime == 0L) {
+                                    synchronized(streams) {
+                                        (streams as Object).wait()
+                                    }
+                                    continue
                                 }
 
                                 val elapsed = System.currentTimeMillis() - startTime
