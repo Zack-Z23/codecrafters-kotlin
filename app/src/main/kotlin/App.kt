@@ -171,15 +171,16 @@ fun main(args: Array<String>) {
                         }
                     }
                     "BLPOP" -> {
-                        val timeout = command[2].toLong()
+                        val timeout = command[2].toDouble()
                         synchronized(listOflists) {
                             val list = listOflists.getOrPut(command[1]) { mutableListOf() }
 
                             while (list.isEmpty()) {
-                                if (timeout == 0L) {
+                                if (timeout == 0.0) {
                                     (listOflists as Object).wait()
                                 } else {
-                                    (listOflists as Object).wait(timeout * 1000)
+                                    val calc = (timeout * 1000).toLong()
+                                    (listOflists as Object).wait(calc)
                                     if(list.isEmpty()){
                                         out.write("*-1\r\n".toByteArray())
                                         return@thread
