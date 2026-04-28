@@ -351,6 +351,70 @@ fun main(args: Array<String>) {
                             }
                         }
                     }
+                    "XREAD" -> {
+                        try {
+                            val streamsIndex = command.indexOfFirst { it.equals("STREAMS", ignoreCase = true) }
+                            val keysAndIds = command.subList(streamsIndex + 1, command.size)
+
+                            val half = keysAndIds.size / 2
+                            val keys = keysAndIds.subList(0, half)
+                            val ids = keysAndIds.subList(half, keysAndIds.size)
+
+                            val results = mutableListOf<Pair<String, List<Pair<String, Map<String, String>>>>>()
+
+                            for (i in keys.indices) {
+                                val key = keys[i]
+                                val startRaw = ids[i]
+
+                                val stream = streams[key] ?: continue
+
+                                val parts = startRaw.split("-")
+                                val startMs = parts[0].toLong()
+                                val startSeq = if (parts.size > 1) parts[1].toLong() else 0L
+
+                                val filtered = stream.filter {
+                                    val p = it.first.split("-")
+                                    val ms = p[0].toLong()
+                                    val seq = p[1].toLong()
+
+                                    (ms > startMs) || (ms == startMs && seq > startSeq)
+                                }
+
+                                if (filtered.isNotEmpty()) {
+                                    results.add(Pair(key, filtered))
+                                }
+                            }
+
+                            if (results.isEmpty()) {
+                                out.write("*0\r\n".toByteArray())
+                            } else {
+                                out.write("*${results.size}\r\n".toByteArray())
+
+                                for ((key, entries) in results) {
+                                    out.write("*2\r\n".toByteArray())
+
+                                    out.write("$${key.length}\r\n${key}\r\n".toByteArray())
+
+                                    out.write("*${entries.size}\r\n".toByteArray())
+
+                                    for ((id, fields) in entries) {
+                                        out.write("*2\r\n".toByteArray())
+
+                                        out.write("$${id.length}\r\n${id}\r\n".toByteArray())
+
+                                        val flat = fields.entries.flatMap { listOf(it.key, it.value) }
+                                        out.write("*${flat.size}\r\n".toByteArray())
+
+                                        for (v in flat) {
+                                            out.write("$${v.length}\r\n${v}\r\n".toByteArray())
+                                        }
+                                    }
+                                }
+                            }
+                        } catch (e: Exception) {
+                            out.write("*0\r\n".toByteArray())
+                        }
+                    }
 
                 }
                 out.flush()
