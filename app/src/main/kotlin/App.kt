@@ -209,18 +209,40 @@ fun main(args: Array<String>) {
                     }
                     "XADD" -> {
                         val key = command[1]
-                        val id = command[2]
+                        var id = command[2]
 
-                        val parts = id.split("-")
-                        val ms = parts[0].toLong()
-                        val seq = parts[1].toLong()
+                        val stream = streams.getOrPut(key) { mutableListOf() }
+
+                        var ms: Long
+                        var seq: Long
+
+                        if (id.contains("*")) {
+                            val parts = id.split("-")
+                            ms = parts[0].toLong()
+
+                            if (ms == 0L && stream.isEmpty()) {
+                                seq = 1
+                            } else {
+                                val sameMs = stream.filter { it.first.startsWith("$ms-") }
+                                seq = if (sameMs.isEmpty()) {
+                                    if (ms == 0L) 1 else 0
+                                } else {
+                                    val lastSeq = sameMs.last().first.split("-")[1].toLong()
+                                    lastSeq + 1
+                                }
+                            }
+
+                            id = "$ms-$seq"
+                        } else {
+                            val parts = id.split("-")
+                            ms = parts[0].toLong()
+                            seq = parts[1].toLong()
+                        }
 
                         if (ms == 0L && seq == 0L) {
                             out.write("-ERR The ID specified in XADD must be greater than 0-0\r\n".toByteArray())
                             out.flush()
                         } else {
-                            val stream = streams.getOrPut(key) { mutableListOf() }
-
                             if (stream.isNotEmpty()) {
                                 val lastId = stream.last().first
                                 val lastParts = lastId.split("-")
@@ -230,36 +252,28 @@ fun main(args: Array<String>) {
                                 if (ms < lastMs || (ms == lastMs && seq <= lastSeq)) {
                                     out.write("-ERR The ID specified in XADD is equal or smaller than the target stream top item\r\n".toByteArray())
                                     out.flush()
-                                } else {
-                                    val fields = mutableMapOf<String, String>()
-                                    var i = 3
-                                    while (i < command.size) {
-                                        fields[command[i]] = command[i + 1]
-                                        i += 2
-                                    }
-
-                                    stream.add(Pair(id, fields))
-                                    out.write("$${id.length}\r\n${id}\r\n".toByteArray())
+                                    return@thread
                                 }
                             } else {
                                 if (ms == 0L && seq <= 0L) {
                                     out.write("-ERR The ID specified in XADD must be greater than 0-0\r\n".toByteArray())
                                     out.flush()
-                                } else {
-                                    val fields = mutableMapOf<String, String>()
-                                    var i = 3
-                                    while (i < command.size) {
-                                        fields[command[i]] = command[i + 1]
-                                        i += 2
-                                    }
-
-                                    stream.add(Pair(id, fields))
-                                    out.write("$${id.length}\r\n${id}\r\n".toByteArray())
+                                    return@thread
                                 }
                             }
-                        }
 
+                            val fields = mutableMapOf<String, String>()
+                            var i = 3
+                            while (i < command.size) {
+                                fields[command[i]] = command[i + 1]
+                                i += 2
+                            }
+
+                            stream.add(Pair(id, fields))
+                            out.write("$${id.length}\r\n${id}\r\n".toByteArray())
+                        }
                     }
+                    
 
                 }
                 out.flush()
