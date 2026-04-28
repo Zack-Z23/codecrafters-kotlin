@@ -15,6 +15,7 @@ fun main(args: Array<String>) {
      serverSocket.reuseAddress = true
     val store = java.util.concurrent.ConcurrentHashMap<String, Pair<String, Long?>>()
     val listOflists = java.util.concurrent.ConcurrentHashMap<String, MutableList<String>>()
+    val streams = java.util.concurrent.ConcurrentHashMap<String, MutableList<Pair<String, Map<String, String>>>>()
     while (true) {
         val client = serverSocket.accept()
         thread {
@@ -194,15 +195,32 @@ fun main(args: Array<String>) {
                         }
                     }
                     "TYPE" -> {
+                        val key = command[1]
+                           if (store.containsKey(key)) {
+                               out.write("+string\r\n".toByteArray())
+                           } else if (listOflists.containsKey(key)) {
+                               out.write("+list\r\n".toByteArray())
+                           } else if (streams.containsKey(key)) {
+                               out.write("+stream\r\n".toByteArray())
+                           } else {
+                               out.write("+none\r\n".toByteArray())
+                           }
+                    }
+                    "XADD" -> {
+                        val key = command[1]
+                        val id = command[2]
 
-                            val key = command[1]
-                            if (store.containsKey(key)) {
-                                out.write("+string\r\n".toByteArray())
-                            } else if (listOflists.containsKey(key)) {
-                                out.write("+list\r\n".toByteArray())
-                            } else {
-                                out.write("+none\r\n".toByteArray())
-                            }
+                        val fields = mutableMapOf<String, String>()
+                        var i = 3
+                        while (i < command.size) {
+                            fields[command[1]] = command[i + 1]
+                             i += 2
+                        }
+                        var stream = streams.getOrPut(key) { mutableListOf() }
+                        stream.add(Pair(id, fields))
+
+                        out.write("$${id.length}\r\n${id}\r\n".toByteArray())
+
                     }
                 }
                 out.flush()
