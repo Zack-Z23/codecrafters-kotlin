@@ -74,11 +74,8 @@ fun main(args: Array<String>) {
                             i++
 
                            synchronized(listOflists) {
-                               (listOflists as Object).notify()
+                               (listOflists as Object).notifyAll()
                            }
-                            //commmand [2] = apple
-                            //command [3] = orange
-                            // array = 0 1 2 3
                         }
 
                         out.write(":${listOflists[command[1]]?.size}\r\n".toByteArray())
