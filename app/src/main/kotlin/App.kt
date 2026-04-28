@@ -351,52 +351,6 @@ fun main(args: Array<String>) {
                             }
                         }
                     }
-                    "XREAD" -> {
-                        val key = command[2]
-                        val startRaw = command[3]
-
-                        val stream = streams[key]
-
-                        if (stream == null || stream.isEmpty()) {
-                            out.write("*0\r\n".toByteArray())
-                        } else {
-                            val parts = startRaw.split("-")
-                            val startMs = parts[0].toLong()
-                            val startSeq = parts[1].toLong()
-
-                            val filtered = stream.filter {
-                                val p = it.first.split("-")
-                                val ms = p[0].toLong()
-                                val seq = p[1].toLong()
-
-                                (ms > startMs) || (ms == startMs && seq > startSeq)
-                            }
-
-                            if (filtered.isEmpty()) {
-                                out.write("*0\r\n".toByteArray())
-                            } else {
-                                out.write("*1\r\n".toByteArray())
-                                out.write("*2\r\n".toByteArray())
-
-                                out.write("$${key.length}\r\n${key}\r\n".toByteArray())
-
-                                out.write("*${filtered.size}\r\n".toByteArray())
-
-                                for ((id, fields) in filtered) {
-                                    out.write("*2\r\n".toByteArray())
-
-                                    out.write("$${id.length}\r\n${id}\r\n".toByteArray())
-
-                                    val flat = fields.entries.flatMap { listOf(it.key, it.value) }
-                                    out.write("*${flat.size}\r\n".toByteArray())
-
-                                    for (v in flat) {
-                                        out.write("$${v.length}\r\n${v}\r\n".toByteArray())
-                                    }
-                                }
-                            }
-                        }
-                    }
 
                 }
                 out.flush()
