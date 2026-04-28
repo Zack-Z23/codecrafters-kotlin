@@ -268,6 +268,11 @@ fun main(args: Array<String>) {
                                 }
 
                                 stream.add(Pair(id, fields))
+
+                                synchronized(streams) {
+                                    (streams as Object).notifyAll()
+                                }
+
                                 out.write("$${id.length}\r\n${id}\r\n".toByteArray())
                             }
                         } else {
