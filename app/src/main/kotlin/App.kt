@@ -182,7 +182,7 @@ fun main(args: Array<String>) {
                                 if (timeout == 0L) {
                                     (listOflists as Object).wait()
                                 } else {
-                                    listOflists.wait(timeout * 1000)
+                                    (listOflists as Object).wait(timeout * 1000)
                                     if(list.isEmpty()){
                                         out.write("*-1\r\n".toByteArray())
                                         return@thread
