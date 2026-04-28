@@ -69,12 +69,18 @@ fun main(args: Array<String>) {
                         }
                         var i = 2
                         while (command.size >= 3 && i < command.size) {
+
                             listOflists[command[1]]!!.add(command[i])
                             i++
+
+                           synchronized(listOflists) {
+                               (listOflists as Object).notify()
+                           }
                             //commmand [2] = apple
                             //command [3] = orange
                             // array = 0 1 2 3
                         }
+
                         out.write(":${listOflists[command[1]]?.size}\r\n".toByteArray())
                     }
                     "LRANGE" -> {
@@ -129,6 +135,7 @@ fun main(args: Array<String>) {
                             //commmand [2] = apple
                             //command [3] = orange
                             // array = 0 1 2 3
+
                         }
                         out.write(":${listOflists[command[1]]?.size}\r\n".toByteArray())
                     }
@@ -166,8 +173,28 @@ fun main(args: Array<String>) {
                             }
                         }
                     }
+                    "BLPOP" -> {
+                        val timeout = command[2].toLong()
+                        synchronized(listOflists) {
+                            val list = listOflists.getOrPut(command[1]) { mutableListOf() }
 
-
+                            while (list.isEmpty()) {
+                                if (timeout == 0L) {
+                                    (listOflists as Object).wait()
+                                } else {
+                                    listOflists.wait(timeout * 1000)
+                                    if(list.isEmpty()){
+                                        out.write("*-1\r\n".toByteArray())
+                                        return@thread
+                                    }
+                                }
+                            }
+                            val value = list.removeFirst()
+                            out.write("*2\r\n".toByteArray())
+                            out.write("$${command[1].length}\r\n${command[1]}\r\n".toByteArray())
+                            out.write("$${value?.length}\r\n${value}\r\n".toByteArray())
+                        }
+                    }
                 }
                 out.flush()
             }
