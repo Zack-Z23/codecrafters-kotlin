@@ -297,20 +297,30 @@ fun main(args: Array<String>) {
                             out.write("*0\r\n".toByteArray())
                         } else {
                             fun parseStart(id: String): Pair<Long, Long> {
-                                return if (id.contains("-")) {
-                                    val p = id.split("-")
-                                    Pair(p[0].toLong(), p[1].toLong())
-                                } else {
-                                    Pair(id.toLong(), 0L)
+                                return when (id) {
+                                    "-" -> Pair(Long.MIN_VALUE, Long.MIN_VALUE)
+                                    else -> {
+                                        if (id.contains("-")) {
+                                            val p = id.split("-")
+                                            Pair(p[0].toLong(), p[1].toLong())
+                                        } else {
+                                            Pair(id.toLong(), 0L)
+                                        }
+                                    }
                                 }
                             }
 
                             fun parseEnd(id: String): Pair<Long, Long> {
-                                return if (id.contains("-")) {
-                                    val p = id.split("-")
-                                    Pair(p[0].toLong(), p[1].toLong())
-                                } else {
-                                    Pair(id.toLong(), Long.MAX_VALUE)
+                                return when (id) {
+                                    "+" -> Pair(Long.MAX_VALUE, Long.MAX_VALUE)
+                                    else -> {
+                                        if (id.contains("-")) {
+                                            val p = id.split("-")
+                                            Pair(p[0].toLong(), p[1].toLong())
+                                        } else {
+                                            Pair(id.toLong(), Long.MAX_VALUE)
+                                        }
+                                    }
                                 }
                             }
 
