@@ -216,7 +216,20 @@ fun main(args: Array<String>) {
                         var ms: Long
                         var seq: Long
 
-                        if (id.contains("*")) {
+                        if (id == "*") {
+                            ms = System.currentTimeMillis()
+
+                            val sameMs = stream.filter { it.first.startsWith("$ms-") }
+
+                            seq = if (sameMs.isEmpty()) {
+                                0
+                            } else {
+                                val lastSeq = sameMs.last().first.split("-")[1].toLong()
+                                lastSeq + 1
+                            }
+
+                            id = "$ms-$seq"
+                        } else if (id.contains("*")) {
                             val parts = id.split("-")
                             ms = parts[0].toLong()
 
