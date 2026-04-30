@@ -619,22 +619,30 @@ fun main(args: Array<String>) {
                             if (masterOffset == 0L) {
                                 out.write(":${replicaStreams.size}\r\n".toByteArray())
                                 out.flush()
-                                return@thread
+                            } else {
+                                val targetOffset = masterOffset
+
+                                val getAck = toRespArray(listOf("REPLCONF", "GETACK", "*"))
+                                for (replicaOut in replicaStreams) {
+                                    try {
+                                        replicaOut.write(getAck)
+                                        replicaOut.flush()
+                                    } catch (e: Exception) {  }
+                                }
+
+                                val startTime = System.currentTimeMillis()
+                                var ackedCount = 0
+
+                                while (System.currentTimeMillis() - startTime < timeout) {
+                                    ackedCount = replicaOffsets.values.count { it >= targetOffset }
+                                    if (ackedCount >= numNeeded) break
+                                    Thread.sleep(10)
+                                }
+
+                                ackedCount = replicaOffsets.values.count { it >= targetOffset }
+                                out.write(":$ackedCount\r\n".toByteArray())
+                                out.flush()
                             }
-
-                            val getAck = toRespArray(listOf("REPLCONF", "GETACK", "*"))
-                            replicaStreams.forEach { it.write(getAck); it.flush() }
-
-                            val startTime = System.currentTimeMillis()
-                            while (System.currentTimeMillis() - startTime < timeout) {
-                                val ackedCount = replicaOffsets.values.count { it >= masterOffset }
-                                if (ackedCount >= numNeeded) break
-                                Thread.sleep(10)
-                            }
-
-                            val finalCount = replicaOffsets.values.count { it >= masterOffset }
-                            out.write(":${finalCount}\r\n".toByteArray())
-                            out.flush()
                         }
                     }
                     out.flush()
