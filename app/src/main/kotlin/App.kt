@@ -599,6 +599,8 @@ fun main(args: Array<String>) {
                                     replicaOffsets.remove(out)
                                 }
                             }
+
+                            break  // <-- exit the main command loop; this connection belongs to the ACK thread now
                         }
                         "WAIT" -> {
                             val numNeeded = command[1].toInt()
