@@ -174,26 +174,36 @@ fun main(args: Array<String>) {
                     }
 
                     "BLPOP" -> {
+                        val key = command[1]
                         val timeout = command[2].toDouble()
-                        synchronized(listOflists) {
-                            val list = listOflists.getOrPut(command[1]) { mutableListOf() }
+                        val list = listOflists.getOrPut(key) { mutableListOf() }
 
-                            while (list.isEmpty()) {
+                        synchronized(list) {
+                            if (list.isEmpty()) {
                                 if (timeout == 0.0) {
-                                    (listOflists as Object).wait()
+                                    while (list.isEmpty()) {
+                                        (list as Object).wait()
+                                    }
                                 } else {
-                                    val calc = (timeout * 1000).toLong()
-                                    (listOflists as Object).wait(calc)
-                                    if (list.isEmpty()) {
-                                        out.write("*-1\r\n".toByteArray())
-                                        return@thread
+                                    val waitTime = (timeout * 1000).toLong()
+                                    val start = System.currentTimeMillis()
+
+                                    while (list.isEmpty()) {
+                                        val elapsed = System.currentTimeMillis() - start
+                                        val remaining = waitTime - elapsed
+                                        if (remaining <= 0) {
+                                            out.write("$-1\r\n".toByteArray())
+                                            return@thread
+                                        }
+                                        (list as Object).wait(remaining)
                                     }
                                 }
                             }
+
                             val value = list.removeFirst()
                             out.write("*2\r\n".toByteArray())
-                            out.write("$${command[1].length}\r\n${command[1]}\r\n".toByteArray())
-                            out.write("$${value?.length}\r\n${value}\r\n".toByteArray())
+                            out.write("$${key.length}\r\n$key\r\n".toByteArray())
+                            out.write("$${value.length}\r\n$value\r\n".toByteArray())
                         }
                     }
 
@@ -568,6 +578,7 @@ fun executeCommand(command: List<String>, store: MutableMap<String, Pair<String,
         else -> "-ERR unknown command\r\n"
     }
 }
+
 fun parseCommand(reader: BufferedReader): List<String> {
     val firstLine = reader.readLine()
     val numElements = firstLine.substring(1).toInt()
