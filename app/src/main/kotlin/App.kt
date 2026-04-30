@@ -494,6 +494,10 @@ fun main(args: Array<String>) {
                         "REPLCONF" -> {
                             out.write("+OK\r\n".toByteArray())
                         }
+                        "PSYNC" -> {
+                            val replId = "8371b4fb1155b71f4a04d3e1bc3e18c4a990aeeb"
+                            out.write("+FULLRESYNC $replId 0\r\n".toByteArray())
+                        }
                     }
                     out.flush()
                 }
