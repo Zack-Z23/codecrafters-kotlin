@@ -135,7 +135,22 @@ fun main(args: Array<String>) {
                         "SET" -> {
                             val key = command[1]
                             val value = command[2]
-                            store[key] = Pair(value, null)
+
+                            if (command.size >= 5) {
+                                val type = command[3].uppercase()
+                                val expiry = command[4].toLong()
+                                val ttl = if (type == "EX") System.currentTimeMillis() + (expiry * 1000) else System.currentTimeMillis() + expiry
+                                store[key] = Pair(value, ttl)
+                            } else {
+                                store[key] = Pair(value, null)
+                            }
+
+                            connectionWatches.values.forEach { (watchedKeys, dirtyFlag) ->
+                                if (watchedKeys.contains(key)) {
+                                    dirtyFlag.set(true)
+                                }
+                            }
+
                             out.write("+OK\r\n".toByteArray())
 
                             val propagated = toRespArray(command)
@@ -501,26 +516,20 @@ fun main(args: Array<String>) {
                         "EXEC" -> {
                             if (!inTransaction) {
                                 out.write("-ERR EXEC without MULTI\r\n".toByteArray())
-                                out.flush()
-                                continue
-                            }
-
-                            if (dirtyFlag.get()) {
+                            } else if (dirtyFlag.get()) {
                                 out.write("*-1\r\n".toByteArray())
                             } else {
-                                val responses = mutableListOf<String>()
+                                out.write("*${transactions.size}\r\n".toByteArray())
                                 for (cmd in transactions) {
-                                    responses.add(executeCommand(cmd, store))
+                                    val response = executeCommand(cmd, store)
+                                    out.write(response.toByteArray())
                                 }
-                                out.write("*${responses.size}\r\n".toByteArray())
-                                for (res in responses) { out.write(res.toByteArray()) }
                             }
 
-                            transactions.clear()
                             inTransaction = false
+                            transactions.clear()
                             watchedKeys.clear()
                             dirtyFlag.set(false)
-                            out.flush()
                         }
 
                         "DISCARD" -> {
@@ -597,43 +606,23 @@ fun main(args: Array<String>) {
 fun executeCommand(command: List<String>, store: MutableMap<String, Pair<String, Long?>>): String {
     return when (command[0].uppercase()) {
         "SET" -> {
-            if (command.size >= 5 && command[3] != null) {
-                when (command[3].uppercase()) {
-                    "EX" -> store[command[1]] = Pair(command[2], System.currentTimeMillis() + (command[4].toLong() * 1000))
-                    "PX" -> store[command[1]] = Pair(command[2], System.currentTimeMillis() + command[4].toLong())
-                }
-            } else {
-                store[command[1]] = Pair(command[2], null)
-            }
+            val key = command[1]
+            val value = command[2]
+            store[key] = Pair(value, null)
             "+OK\r\n"
         }
-
-        "INCR" -> {
-            val key = command[1]
-            val entry = store[key]
-            if (entry == null) {
-                store[key] = Pair("1", null)
-                ":1\r\n"
-            } else {
-                val num = entry.first.toLongOrNull()
-                if (num == null) "-ERR value is not an integer or out of range\r\n"
-                else {
-                    val newVal = num + 1
-                    store[key] = Pair(newVal.toString(), entry.second)
-                    ":$newVal\r\n"
-                }
-            }
-        }
-
         "GET" -> {
             val entry = store[command[1]]
-            val value = entry?.first
-            val expiry = entry?.second
-            if (value == null || (expiry != null && expiry <= System.currentTimeMillis())) "$-1\r\n"
-            else "$${value.length}\r\n${value}\r\n"
+            if (entry == null) "$-1\r\n" else "$${entry.first.length}\r\n${entry.first}\r\n"
         }
-
-        else -> "-ERR unknown command\r\n"
+        "INCR" -> {
+            val key = command[1]
+            val current = store[key]?.first?.toLong() ?: 0L
+            val next = current + 1
+            store[key] = Pair(next.toString(), null)
+            ":$next\r\n"
+        }
+        else -> "+OK\r\n"
     }
 }
 
