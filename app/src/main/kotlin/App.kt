@@ -24,6 +24,7 @@ fun main(args: Array<String>) {
             val out = client.getOutputStream()
             var inTransaction = false
             val transactions = mutableListOf<List<String>>()
+            val watchedKeys = mutableSetOf<String>()
             while (true) {
                 val command = parseCommand(input.bufferedReader())
                 if (inTransaction && command[0].uppercase() !in listOf("EXEC", "MULTI", "DISCARD")) {
@@ -543,7 +544,14 @@ fun main(args: Array<String>) {
                         }
                     }
                     "WATCH" -> {
-                        out.write("+OK\r\n".toByteArray())
+                        if (inTransaction) {
+                            out.write("-ERR WATCH inside MULTI is not allowed\r\n".toByteArray())
+                        } else {
+                            for (i in 1 until command.size) {
+                                watchedKeys.add(command[i])
+                            }
+                            out.write("+OK\r\n".toByteArray())
+                        }
                     }
                 }
                 out.flush()
