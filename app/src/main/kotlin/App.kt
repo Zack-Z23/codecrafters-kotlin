@@ -19,52 +19,63 @@ fun main(args: Array<String>) {
     val connectionIdCounter = java.util.concurrent.atomic.AtomicLong(0)
 
     if (role == "slave") {
-
         val replicaof = args[args.indexOf("--replicaof") + 1]
-        val (masterHost, masterPort) = replicaof.split(" ")
-        val masterSocket = java.net.Socket(masterHost, masterPort.toInt())
+        val parts = replicaof.split(" ")
+        val masterHost = parts[0]
+        val masterPort = parts[1].toInt()
+
+        val masterSocket = java.net.Socket(masterHost, masterPort)
         val masterOut = masterSocket.getOutputStream()
-        val masterIn = masterSocket.getInputStream().bufferedReader()
+        val masterIn = masterSocket.getInputStream()
 
-        masterOut.write("*1\r\n\$4\r\nPING\r\n".toByteArray())
+        masterOut.write("*1\r\n$4\r\nPING\r\n".toByteArray())
         masterOut.flush()
-        masterIn.readLine()
+        readRawLine(masterIn)
 
-        val replconf1 = "*3\r\n\$8\r\nREPLCONF\r\n\$14\r\nlistening-port\r\n\$${port.toString().length}\r\n$port\r\n"
-        masterOut.write(replconf1.toByteArray())
+        val conf1 = "*3\r\n$8\r\nREPLCONF\r\n$14\r\nlistening-port\r\n$${port.toString().length}\r\n$port\r\n"
+        masterOut.write(conf1.toByteArray())
         masterOut.flush()
-        masterIn.readLine()
+        readRawLine(masterIn)
 
-        masterOut.write("*3\r\n\$8\r\nREPLCONF\r\n\$4\r\ncapa\r\n\$6\r\npsync2\r\n".toByteArray())
+        masterOut.write("*3\r\n$8\r\nREPLCONF\r\n$4\r\ncapa\r\n$6\r\npsync2\r\n".toByteArray())
         masterOut.flush()
-        masterIn.readLine()
+        readRawLine(masterIn)
 
-        masterOut.write("*3\r\n\$5\r\nPSYNC\r\n\$1\r\n?\r\n\$2\r\n-1\r\n".toByteArray())
+        masterOut.write("*3\r\n$5\r\nPSYNC\r\n$1\r\n?\r\n$2\r\n-1\r\n".toByteArray())
         masterOut.flush()
-        masterIn.readLine()
+        readRawLine(masterIn)
 
-
-        val rdbHeader = masterIn.readLine()
-        val rdbLength = rdbHeader.substring(1).toInt()
-        repeat(rdbLength) { masterIn.read() }
-
+        val rdbHeader = readRawLine(masterIn)
+        if (rdbHeader.startsWith("$")) {
+            val rdbLength = rdbHeader.substring(1).toInt()
+            val rdbBuffer = ByteArray(rdbLength)
+            var bytesRead = 0
+            while (bytesRead < rdbLength) {
+                val read = masterIn.read(rdbBuffer, bytesRead, rdbLength - bytesRead)
+                if (read == -1) break
+                bytesRead += read
+            }
+        }
 
         thread {
-
-            val replicaof = args[args.indexOf("--replicaof") + 1]
+            val reader = masterIn.bufferedReader()
             while (true) {
-                val command = parseCommand(masterIn)
-                when (command[0].uppercase()) {
-                    "SET" -> {
+                try {
+                    val command = parseCommand(reader) ?: break
+                    if (command.isNotEmpty() && command[0].uppercase() == "SET") {
+                        val key = command[1]
+                        val value = command[2]
                         if (command.size >= 5) {
-                            when (command[3].uppercase()) {
-                                "EX" -> store[command[1]] = Pair(command[2], System.currentTimeMillis() + (command[4].toLong() * 1000))
-                                "PX" -> store[command[1]] = Pair(command[2], System.currentTimeMillis() + command[4].toLong())
-                            }
+                            val type = command[3].uppercase()
+                            val expiry = command[4].toLong()
+                            val ttl = if (type == "EX") System.currentTimeMillis() + (expiry * 1000) else System.currentTimeMillis() + expiry
+                            store[key] = Pair(value, ttl)
                         } else {
-                            store[command[1]] = Pair(command[2], null)
+                            store[key] = Pair(value, null)
                         }
                     }
+                } catch (e: Exception) {
+                    break
                 }
             }
         }
@@ -625,4 +636,14 @@ fun notifyWatchers(key: String, connectionWatches: java.util.concurrent.Concurre
             pair.second.set(true)
         }
     }
+}
+fun readRawLine(input: java.io.InputStream): String {
+    val baos = java.io.ByteArrayOutputStream()
+    var b: Int
+    while (true) {
+        b = input.read()
+        if (b == -1 || b == '\n'.toInt()) break
+        if (b != '\r'.toInt()) baos.write(b)
+    }
+    return baos.toString().trim()
 }
