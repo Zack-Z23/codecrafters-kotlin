@@ -4,6 +4,21 @@ import javax.swing.text.html.parser.Parser
 import kotlin.concurrent.thread
 import kotlin.time.Duration
 
+class ByteTrackingInputStream(private val inner: java.io.InputStream) : java.io.InputStream() {
+    var bytesRead = 0L
+        private set
+
+    override fun read(): Int {
+        val b = inner.read()
+        if (b != -1) bytesRead++
+        return b
+    }
+
+    fun resetCount() {
+        bytesRead = 0
+    }
+}
+
 fun main(args: Array<String>) {
     System.err.println("Logs from your program will appear here!")
     val port = args.indexOf("--port").takeIf { it >= 0 }?.let { args[it + 1].toInt() } ?: 6379
@@ -26,70 +41,61 @@ fun main(args: Array<String>) {
 
         val masterSocket = java.net.Socket(masterHost, masterPort)
         val masterOut = masterSocket.getOutputStream()
-        val masterIn = masterSocket.getInputStream()
+        val rawIn = masterSocket.getInputStream()
 
         masterOut.write("*1\r\n$4\r\nPING\r\n".toByteArray())
         masterOut.flush()
-        readRawLine(masterIn)
+        readRawLine(rawIn)
 
         val conf1 = "*3\r\n$8\r\nREPLCONF\r\n$14\r\nlistening-port\r\n$${port.toString().length}\r\n$port\r\n"
         masterOut.write(conf1.toByteArray())
         masterOut.flush()
-        readRawLine(masterIn)
+        readRawLine(rawIn)
 
         masterOut.write("*3\r\n$8\r\nREPLCONF\r\n$4\r\ncapa\r\n$6\r\npsync2\r\n".toByteArray())
         masterOut.flush()
-        readRawLine(masterIn)
+        readRawLine(rawIn)
 
         masterOut.write("*3\r\n$5\r\nPSYNC\r\n$1\r\n?\r\n$2\r\n-1\r\n".toByteArray())
         masterOut.flush()
-        readRawLine(masterIn)
+        readRawLine(rawIn)
 
-        val rdbHeader = readRawLine(masterIn)
+        val rdbHeader = readRawLine(rawIn)
         if (rdbHeader.startsWith("$")) {
             val rdbLength = rdbHeader.substring(1).toInt()
             val rdbBuffer = ByteArray(rdbLength)
             var bytesRead = 0
             while (bytesRead < rdbLength) {
-                val read = masterIn.read(rdbBuffer, bytesRead, rdbLength - bytesRead)
+                val read = rawIn.read(rdbBuffer, bytesRead, rdbLength - bytesRead)
                 if (read == -1) break
                 bytesRead += read
             }
         }
 
         thread {
-            val reader = masterIn.bufferedReader()
-
-            val masterOutStream = masterSocket.getOutputStream()
+            val trackingIn = ByteTrackingInputStream(rawIn)
+            var currentOffset = 0L
 
             while (true) {
                 try {
-                    val command = parseCommand(reader) ?: break
+                    val offsetBeforeCommand = currentOffset
+                    val command = parseCommandFromStream(trackingIn) ?: break
+                    currentOffset += trackingIn.bytesRead
+                    trackingIn.resetCount()
+
                     val cmdName = command[0].uppercase()
-
-                    when (cmdName) {
-                        "SET" -> {
-                            val key = command[1]
-                            val value = command[2]
-                            if (command.size >= 5) {
-                                val type = command[3].uppercase()
-                                val expiry = command[4].toLong()
-                                val ttl = if (type == "EX") System.currentTimeMillis() + (expiry * 1000) else System.currentTimeMillis() + expiry
-                                store[key] = Pair(value, ttl)
-                            } else {
-                                store[key] = Pair(value, null)
-                            }
-                        }
-                        "REPLCONF" -> {
-
-                            if (command.size >= 3 && command[1].uppercase() == "GETACK") {
-                                val response = "*3\r\n$8\r\nREPLCONF\r\n$3\r\nACK\r\n$1\r\n0\r\n"
-                                masterOutStream.write(response.toByteArray())
-                                masterOutStream.flush()
-                            }
-                        }
-                        "PING" -> {
-                          
+                    if (cmdName == "REPLCONF" && command.size >= 3 && command[1].uppercase() == "GETACK") {
+                        val res = "*3\r\n$8\r\nREPLCONF\r\n$3\r\nACK\r\n$${offsetBeforeCommand.toString().length}\r\n$offsetBeforeCommand\r\n"
+                        masterOut.write(res.toByteArray())
+                        masterOut.flush()
+                    } else if (cmdName == "SET") {
+                        if (command.size >= 5) {
+                            val type = command[3].uppercase()
+                            val expiry = command[4].toLong()
+                            val ttl = if (type == "EX") System.currentTimeMillis() + (expiry * 1000) else System.currentTimeMillis() + expiry
+                            store[command[1]] = Pair(command[2], ttl)
+                        } else {
+                            store[command[1]] = Pair(command[2], null)
                         }
                     }
                 } catch (e: Exception) {
@@ -664,4 +670,28 @@ fun readRawLine(input: java.io.InputStream): String {
         if (b != '\r'.toInt()) baos.write(b)
     }
     return baos.toString().trim()
+}
+
+fun parseCommandFromStream(input: java.io.InputStream): List<String>? {
+    val firstByte = input.read()
+    if (firstByte == -1) return null
+    if (firstByte.toChar() != '*') return null
+
+    val numElements = readRawLine(input).toInt()
+    val command = mutableListOf<String>()
+
+    repeat(numElements) {
+        input.read() // consume '$'
+        val length = readRawLine(input).toInt()
+        val bytes = ByteArray(length)
+        var read = 0
+        while (read < length) {
+            val r = input.read(bytes, read, length - read)
+            read += r
+        }
+        input.read() // \r
+        input.read() // \n
+        command.add(String(bytes))
+    }
+    return command
 }
