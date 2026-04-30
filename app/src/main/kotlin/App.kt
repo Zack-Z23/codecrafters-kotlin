@@ -119,12 +119,12 @@ fun main(args: Array<String>) {
             val input = client.getInputStream()
             val out = client.getOutputStream()
             var inTransaction = false
-            val transactions = mutableListOf<List<String>>()
+            val transactions = mutableListOf<List<String>?>()
 
             try {
                 while (true) {
-                    val command = parseCommand(input.bufferedReader())
-                    if (inTransaction && command[0].uppercase() !in listOf("EXEC", "MULTI", "DISCARD", "WATCH")) {
+                    val command: List<String> = parseCommand(input.bufferedReader()) ?: break
+                    if (inTransaction && command?.get(0)?.uppercase() !in listOf("EXEC", "MULTI", "DISCARD", "WATCH")) {
                         transactions.add(command)
                         out.write("+QUEUED\r\n".toByteArray())
                         out.flush()
@@ -522,7 +522,7 @@ fun main(args: Array<String>) {
                             } else {
                                 out.write("*${transactions.size}\r\n".toByteArray())
                                 for (cmd in transactions) {
-                                    out.write(executeCommand(cmd, store).toByteArray())
+                                    out.write(cmd?.let { executeCommand(it, store) }?.toByteArray())
                                 }
                             }
                             inTransaction = false
@@ -666,7 +666,7 @@ fun executeCommand(command: List<String>, store: MutableMap<String, Pair<String,
     }
 }
 
-fun parseCommand(reader: java.io.BufferedReader): List<String> {
+fun parseCommand(reader: java.io.BufferedReader): List<String>? {
     val line = reader.readLine() ?: return null
     if (!line.startsWith("*")) return null
 
