@@ -8,6 +8,8 @@ fun main(args: Array<String>) {
     System.err.println("Logs from your program will appear here!")
     val port = args.indexOf("--port").takeIf { it >= 0 }?.let { args[it + 1].toInt() } ?: 6379
     val role = if (args.contains("--replicaof")) "slave" else "master"
+    val serverSocket = ServerSocket(port)
+    serverSocket.reuseAddress = true
 
     val store = java.util.concurrent.ConcurrentHashMap<String, Pair<String, Long?>>()
     val replicaStreams = java.util.concurrent.CopyOnWriteArrayList<java.io.OutputStream>()
@@ -17,6 +19,7 @@ fun main(args: Array<String>) {
     val connectionIdCounter = java.util.concurrent.atomic.AtomicLong(0)
 
     if (role == "slave") {
+
         val replicaof = args[args.indexOf("--replicaof") + 1]
         val (masterHost, masterPort) = replicaof.split(" ")
         val masterSocket = java.net.Socket(masterHost, masterPort.toInt())
@@ -38,15 +41,17 @@ fun main(args: Array<String>) {
 
         masterOut.write("*3\r\n\$5\r\nPSYNC\r\n\$1\r\n?\r\n\$2\r\n-1\r\n".toByteArray())
         masterOut.flush()
-        masterIn.readLine() // +FULLRESYNC ...
+        masterIn.readLine()
 
-        // Read and discard the RDB file
-        val rdbHeader = masterIn.readLine() // $<length>
+
+        val rdbHeader = masterIn.readLine()
         val rdbLength = rdbHeader.substring(1).toInt()
         repeat(rdbLength) { masterIn.read() }
 
-        // Process propagated commands in background
+
         thread {
+
+            val replicaof = args[args.indexOf("--replicaof") + 1]
             while (true) {
                 val command = parseCommand(masterIn)
                 when (command[0].uppercase()) {
@@ -65,8 +70,6 @@ fun main(args: Array<String>) {
         }
     }
 
-    val serverSocket = ServerSocket(port)
-    serverSocket.reuseAddress = true
 
     while (true) {
         val client = serverSocket.accept()
