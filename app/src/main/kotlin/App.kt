@@ -27,6 +27,8 @@ fun main(args: Array<String>) {
     serverSocket.reuseAddress = true
 
     val store = java.util.concurrent.ConcurrentHashMap<String, Pair<String, Long?>>()
+    var masterOffset = 0L
+    val replicaOffsets = java.util.concurrent.ConcurrentHashMap<java.io.OutputStream, Long>()
     val replicaStreams = java.util.concurrent.CopyOnWriteArrayList<java.io.OutputStream>()
     val listOflists = java.util.concurrent.ConcurrentHashMap<String, MutableList<String>>()
     val streams = java.util.concurrent.ConcurrentHashMap<String, MutableList<Pair<String, Map<String, String>>>>()
@@ -153,7 +155,9 @@ fun main(args: Array<String>) {
 
                             out.write("+OK\r\n".toByteArray())
 
+
                             val propagated = toRespArray(command)
+                            masterOffset += propagated.size
                             for (replicaOut in replicaStreams) {
                                 try {
                                     replicaOut.write(propagated)
@@ -584,7 +588,28 @@ fun main(args: Array<String>) {
                             val numReplicasNeeded = command[1].toInt()
                             val timeout = command[2].toLong()
 
-                            out.write(":${replicaStreams.size}\r\n".toByteArray())
+                            if (masterOffset == 0L) {
+                                out.write(":${replicaStreams.size}\r\n".toByteArray())
+                                out.flush()
+                                return@thread
+                            }
+
+                            // Trigger an ACK request from all replicas
+                            val getAck = toRespArray(listOf("REPLCONF", "GETACK", "*"))
+                            for (replicaOut in replicaStreams) {
+                                replicaOut.write(getAck)
+                                replicaOut.flush()
+                            }
+
+                            val startTime = System.currentTimeMillis()
+                            while (System.currentTimeMillis() - startTime < timeout) {
+                                val count = replicaOffsets.values.count { it >= masterOffset }
+                                if (count >= numReplicasNeeded) break
+                                Thread.sleep(10) // Small polling delay
+                            }
+
+                            val finalCount = replicaOffsets.values.count { it >= masterOffset }
+                            out.write(":$finalCount\r\n".toByteArray())
                             out.flush()
                         }
                     }
