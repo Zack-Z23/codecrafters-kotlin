@@ -542,6 +542,9 @@ fun main(args: Array<String>) {
                             out.write("+OK\r\n".toByteArray())
                         }
                     }
+                    "WATCH" -> {
+                        out.write("+OK\r\n".toByteArray())
+                    }
                 }
                 out.flush()
             }
