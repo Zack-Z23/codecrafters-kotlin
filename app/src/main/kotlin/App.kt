@@ -6,8 +6,8 @@ import kotlin.time.Duration
 
 fun main(args: Array<String>) {
     System.err.println("Logs from your program will appear here!")
-
     val port = args.indexOf("--port").takeIf { it >= 0 }?.let { args[it + 1].toInt() } ?: 6379
+    val role = if (args.contains("--replicaof")) "slave" else "master"
     var serverSocket = ServerSocket(port)
     serverSocket.reuseAddress = true
 
@@ -463,7 +463,7 @@ fun main(args: Array<String>) {
                             out.write("+OK\r\n".toByteArray())
                         }
                         "INFO" -> {
-                            val info = "role:master"
+                            val info = "role:$role"
                             out.write("$${info.length}\r\n${info}\r\n".toByteArray())
                         }
                     }
