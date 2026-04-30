@@ -521,11 +521,9 @@ fun main(args: Array<String>) {
                             } else {
                                 out.write("*${transactions.size}\r\n".toByteArray())
                                 for (cmd in transactions) {
-                                    val response = executeCommand(cmd, store)
-                                    out.write(response.toByteArray())
+                                    out.write(executeCommand(cmd, store).toByteArray())
                                 }
                             }
-
                             inTransaction = false
                             transactions.clear()
                             watchedKeys.clear()
@@ -606,9 +604,7 @@ fun main(args: Array<String>) {
 fun executeCommand(command: List<String>, store: MutableMap<String, Pair<String, Long?>>): String {
     return when (command[0].uppercase()) {
         "SET" -> {
-            val key = command[1]
-            val value = command[2]
-            store[key] = Pair(value, null)
+            store[command[1]] = Pair(command[2], null)
             "+OK\r\n"
         }
         "GET" -> {
@@ -617,11 +613,21 @@ fun executeCommand(command: List<String>, store: MutableMap<String, Pair<String,
         }
         "INCR" -> {
             val key = command[1]
-            val current = store[key]?.first?.toLong() ?: 0L
-            val next = current + 1
-            store[key] = Pair(next.toString(), null)
-            ":$next\r\n"
+            val entry = store[key]
+            if (entry == null) {
+                store[key] = Pair("1", null)
+                ":1\r\n"
+            } else {
+                try {
+                    val nextValue = entry.first.toLong() + 1
+                    store[key] = Pair(nextValue.toString(), null)
+                    ":$nextValue\r\n"
+                } catch (e: NumberFormatException) {
+                    "-ERR value is not an integer or out of range\r\n"
+                }
+            }
         }
+        "DISCARD" -> "+OK\r\n"
         else -> "+OK\r\n"
     }
 }
