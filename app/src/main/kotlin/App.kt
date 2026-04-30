@@ -138,25 +138,16 @@ fun main(args: Array<String>) {
                             val key = command[1]
                             val value = command[2]
 
-
                             if (command.size >= 5) {
                                 val type = command[3].uppercase()
                                 val expiry = command[4].toLong()
-                                val ttl = if (type == "EX") {
-                                    System.currentTimeMillis() + (expiry * 1000)
-                                } else {
-                                    System.currentTimeMillis() + expiry
-                                }
+                                val ttl = if (type == "EX") System.currentTimeMillis() + (expiry * 1000) else System.currentTimeMillis() + expiry
                                 store[key] = Pair(value, ttl)
                             } else {
                                 store[key] = Pair(value, null)
                             }
 
-                            connectionWatches.values.forEach { (watchedKeys, dirtyFlag) ->
-                                if (watchedKeys.contains(key)) {
-                                    dirtyFlag.set(true)
-                                }
-                            }
+                            notifyWatchers(key, connectionWatches)
 
                             val propagated = toRespArray(command)
                             val iterator = replicaStreams.iterator()
@@ -166,7 +157,6 @@ fun main(args: Array<String>) {
                                     replicaOut.write(propagated)
                                     replicaOut.flush()
                                 } catch (e: Exception) {
-
                                     iterator.remove()
                                 }
                             }
@@ -616,31 +606,36 @@ fun main(args: Array<String>) {
                             val numNeeded = command[1].toInt()
                             val timeout = command[2].toLong()
 
-                            if (masterOffset == 0L) {
+                            // Capture target offset BEFORE sending GETACK
+                            val targetOffset = masterOffset
+
+                            // If no writes have happened, they are in sync at offset 0
+                            if (targetOffset == 0L) {
                                 out.write(":${replicaStreams.size}\r\n".toByteArray())
                                 out.flush()
                             } else {
-                                val targetOffset = masterOffset
-
+                                // Send GETACK to all replicas
                                 val getAck = toRespArray(listOf("REPLCONF", "GETACK", "*"))
                                 for (replicaOut in replicaStreams) {
                                     try {
                                         replicaOut.write(getAck)
                                         replicaOut.flush()
-                                    } catch (e: Exception) {  }
+                                    } catch (e: Exception) { }
                                 }
 
                                 val startTime = System.currentTimeMillis()
-                                var ackedCount = 0
+                                var currentAcked = 0
 
+                                // Poll until timeout or target reached
                                 while (System.currentTimeMillis() - startTime < timeout) {
-                                    ackedCount = replicaOffsets.values.count { it >= targetOffset }
-                                    if (ackedCount >= numNeeded) break
-                                    Thread.sleep(10)
+                                    currentAcked = replicaOffsets.values.count { it >= targetOffset }
+                                    if (currentAcked >= numNeeded) break
+                                    Thread.sleep(10) // Give background threads time to parse incoming ACKs
                                 }
 
-                                ackedCount = replicaOffsets.values.count { it >= targetOffset }
-                                out.write(":$ackedCount\r\n".toByteArray())
+                                // Final count check
+                                val finalAcked = replicaOffsets.values.count { it >= targetOffset }
+                                out.write(":$finalAcked\r\n".toByteArray())
                                 out.flush()
                             }
                         }
