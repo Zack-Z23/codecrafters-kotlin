@@ -462,6 +462,10 @@ fun main(args: Array<String>) {
                             dirtyFlag.set(false)
                             out.write("+OK\r\n".toByteArray())
                         }
+                        "INFO" -> {
+                            val info = "role:master"
+                            out.write("$${info.length}\r\n${info}\r\n".toByteArray())
+                        }
                     }
                     out.flush()
                 }
