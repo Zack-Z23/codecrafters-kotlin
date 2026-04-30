@@ -505,13 +505,22 @@ fun main(args: Array<String>) {
                         out.write("+OK\r\n".toByteArray())
                     }
                     "EXEC" -> {
-                        if (!inTransaction) {
-                            out.write("-ERR EXEC without MULTI\r\n".toByteArray())
-                        } else {
-                            out.write("*0\r\n".toByteArray()) // still empty for now
-                            inTransaction = false
-                            transactions.clear()
+                        val responses = mutableListOf<String>()
+
+                        for (cmd in transactions) {
+                            val result = executeCommand(cmd, store)
+                            responses.add(result)
                         }
+
+                        out.write("*${responses.size}\r\n".toByteArray())
+                        for (res in responses) {
+                            out.write(res.toByteArray())
+                        }
+
+                        out.flush()
+
+                        transactions.clear()
+                        inTransaction = false
                     }
                 }
                 out.flush()
@@ -521,7 +530,38 @@ fun main(args: Array<String>) {
     }
 }
 
+fun executeCommand(command: List<String>, store: MutableMap<String, Pair<String, Long?>>): String {
+    return when (command[0].uppercase()) {
 
+        "SET" -> {
+            store[command[1]] = Pair(command[2], null)
+            "+OK\r\n"
+        }
+
+        "INCR" -> {
+            val key = command[1]
+            val entry = store[key]
+            val value = entry?.first?.toIntOrNull() ?: 0
+            val newValue = value + 1
+            store[key] = Pair(newValue.toString(), null)
+            ":$newValue\r\n"
+        }
+
+        "GET" -> {
+            val entry = store[command[1]]
+            val value = entry?.first
+            val expiry = entry?.second
+
+            if (value == null || (expiry != null && expiry <= System.currentTimeMillis())) {
+                "$-1\r\n"
+            } else {
+                "$${value.length}\r\n${value}\r\n"
+            }
+        }
+
+        else -> "-ERR unknown command\r\n"
+    }
+}
 fun parseCommand(reader: BufferedReader): List<String> {
     val firstLine = reader.readLine()
     val numElements = firstLine.substring(1).toInt()
