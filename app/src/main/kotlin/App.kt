@@ -192,7 +192,7 @@ fun main(args: Array<String>) {
                                         val elapsed = System.currentTimeMillis() - start
                                         val remaining = waitTime - elapsed
                                         if (remaining <= 0) {
-                                            out.write("$-1\r\n".toByteArray())
+                                            out.write("*-1\r\n".toByteArray())
                                             return@thread
                                         }
                                         (list as Object).wait(remaining)
