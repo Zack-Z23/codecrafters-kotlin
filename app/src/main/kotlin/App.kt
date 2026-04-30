@@ -9,6 +9,13 @@ fun main(args: Array<String>) {
     val port = args.indexOf("--port").takeIf { it >= 0 }?.let { args[it + 1].toInt() } ?: 6379
     val role = if (args.contains("--replicaof")) "slave" else "master"
 
+    val store = java.util.concurrent.ConcurrentHashMap<String, Pair<String, Long?>>()
+    val replicaStreams = java.util.concurrent.CopyOnWriteArrayList<java.io.OutputStream>()
+    val listOflists = java.util.concurrent.ConcurrentHashMap<String, MutableList<String>>()
+    val streams = java.util.concurrent.ConcurrentHashMap<String, MutableList<Pair<String, Map<String, String>>>>()
+    val connectionWatches = java.util.concurrent.ConcurrentHashMap<Long, Pair<MutableSet<String>, java.util.concurrent.atomic.AtomicBoolean>>()
+    val connectionIdCounter = java.util.concurrent.atomic.AtomicLong(0)
+
     if (role == "slave") {
         val replicaof = args[args.indexOf("--replicaof") + 1]
         val (masterHost, masterPort) = replicaof.split(" ")
@@ -31,17 +38,35 @@ fun main(args: Array<String>) {
 
         masterOut.write("*3\r\n\$5\r\nPSYNC\r\n\$1\r\n?\r\n\$2\r\n-1\r\n".toByteArray())
         masterOut.flush()
-        masterIn.readLine()
-    }
-    var serverSocket = ServerSocket(port)
-    serverSocket.reuseAddress = true
+        masterIn.readLine() // +FULLRESYNC ...
 
-    val store = java.util.concurrent.ConcurrentHashMap<String, Pair<String, Long?>>()
-    val replicaStreams = java.util.concurrent.CopyOnWriteArrayList<java.io.OutputStream>()
-    val listOflists = java.util.concurrent.ConcurrentHashMap<String, MutableList<String>>()
-    val streams = java.util.concurrent.ConcurrentHashMap<String, MutableList<Pair<String, Map<String, String>>>>()
-    val connectionWatches = java.util.concurrent.ConcurrentHashMap<Long, Pair<MutableSet<String>, java.util.concurrent.atomic.AtomicBoolean>>()
-    val connectionIdCounter = java.util.concurrent.atomic.AtomicLong(0)
+        // Read and discard the RDB file
+        val rdbHeader = masterIn.readLine() // $<length>
+        val rdbLength = rdbHeader.substring(1).toInt()
+        repeat(rdbLength) { masterIn.read() }
+
+        // Process propagated commands in background
+        thread {
+            while (true) {
+                val command = parseCommand(masterIn)
+                when (command[0].uppercase()) {
+                    "SET" -> {
+                        if (command.size >= 5) {
+                            when (command[3].uppercase()) {
+                                "EX" -> store[command[1]] = Pair(command[2], System.currentTimeMillis() + (command[4].toLong() * 1000))
+                                "PX" -> store[command[1]] = Pair(command[2], System.currentTimeMillis() + command[4].toLong())
+                            }
+                        } else {
+                            store[command[1]] = Pair(command[2], null)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    val serverSocket = ServerSocket(port)
+    serverSocket.reuseAddress = true
 
     while (true) {
         val client = serverSocket.accept()
@@ -488,18 +513,22 @@ fun main(args: Array<String>) {
                                 out.write("+OK\r\n".toByteArray())
                             }
                         }
+
                         "UNWATCH" -> {
                             watchedKeys.clear()
                             dirtyFlag.set(false)
                             out.write("+OK\r\n".toByteArray())
                         }
+
                         "INFO" -> {
                             val info = "role:$role\r\nmaster_replid:8371b4fb1155b71f4a04d3e1bc3e18c4a990aeeb\r\nmaster_repl_offset:0"
                             out.write("$${info.length}\r\n${info}\r\n".toByteArray())
                         }
+
                         "REPLCONF" -> {
                             out.write("+OK\r\n".toByteArray())
                         }
+
                         "PSYNC" -> {
                             val replId = "8371b4fb1155b71f4a04d3e1bc3e18c4a990aeeb"
                             out.write("+FULLRESYNC $replId 0\r\n".toByteArray())
@@ -577,6 +606,7 @@ fun parseCommand(reader: BufferedReader): List<String> {
     }
     return result
 }
+
 fun toRespArray(parts: List<String>): ByteArray {
     val sb = StringBuilder()
     sb.append("*${parts.size}\r\n")
