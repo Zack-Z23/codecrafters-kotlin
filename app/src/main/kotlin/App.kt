@@ -611,6 +611,7 @@ fun main(args: Array<String>) {
                                 }
 
                                 val startTime = System.currentTimeMillis()
+
                                 while (System.currentTimeMillis() - startTime < timeout) {
                                     val acked = replicaOffsets.values.count { it >= masterOffset }
                                     if (acked >= numReplicasNeeded) break
@@ -618,7 +619,8 @@ fun main(args: Array<String>) {
                                 }
 
                                 val finalCount = replicaOffsets.values.count { it >= masterOffset }
-                                out.write(":$finalCount\r\n".toByteArray())
+
+                                out.write(":${finalCount}\r\n".toByteArray())
                             }
                             out.flush()
                         }
@@ -664,16 +666,23 @@ fun executeCommand(command: List<String>, store: MutableMap<String, Pair<String,
     }
 }
 
-fun parseCommand(reader: BufferedReader): List<String> {
-    val firstLine = reader.readLine()
-    val numElements = firstLine.substring(1).toInt()
-    val result = mutableListOf<String>()
-    repeat(numElements) {
-        reader.readLine()
-        val value = reader.readLine()
-        result.add(value)
+fun parseCommand(reader: java.io.BufferedReader): List<String>? {
+    val line = reader.readLine() ?: return null
+    if (!line.startsWith("*")) return null
+
+    val numElements = try {
+        line.substring(1).toInt()
+    } catch (e: Exception) {
+        return null
     }
-    return result
+
+    val command = mutableListOf<String>()
+    repeat(numElements) {
+        reader.readLine() ?: return null
+        val value = reader.readLine() ?: return null
+        command.add(value)
+    }
+    return command
 }
 
 fun toRespArray(command: List<String>): ByteArray {
