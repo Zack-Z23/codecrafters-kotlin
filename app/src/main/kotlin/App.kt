@@ -122,6 +122,7 @@ fun main(args: Array<String>) {
             val transactions = mutableListOf<List<String>?>()
 
             try {
+                var isReplicaConnection = false
                 while (true) {
                     val command: List<String> = parseCommand(reader) ?: break
                     if (inTransaction && command?.get(0)?.uppercase() !in listOf("EXEC", "MULTI", "DISCARD", "WATCH")) {
@@ -583,6 +584,7 @@ fun main(args: Array<String>) {
 
                             replicaStreams.add(out)
                             replicaOffsets[out] = 0L
+                            isReplicaConnection = true
 
                             thread {
                                 try {
@@ -597,6 +599,7 @@ fun main(args: Array<String>) {
                                 } finally {
                                     replicaStreams.remove(out)
                                     replicaOffsets.remove(out)
+                                    client.close()
                                 }
                             }
 
