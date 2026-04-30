@@ -7,7 +7,8 @@ import kotlin.time.Duration
 fun main(args: Array<String>) {
     System.err.println("Logs from your program will appear here!")
 
-    var serverSocket = ServerSocket(6379)
+    val port = args.indexOf("--port").takeIf { it >= 0 }?.let { args[it + 1].toInt() } ?: 6379
+    var serverSocket = ServerSocket(port)
     serverSocket.reuseAddress = true
 
     val store = java.util.concurrent.ConcurrentHashMap<String, Pair<String, Long?>>()
