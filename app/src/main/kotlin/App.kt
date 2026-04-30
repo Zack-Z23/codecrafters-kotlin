@@ -26,7 +26,7 @@ fun main(args: Array<String>) {
             val transactions = mutableListOf<List<String>>()
             while (true) {
                 val command = parseCommand(input.bufferedReader())
-                if (inTransaction && command[0].uppercase() !in listOf("EXEC", "MULTI")) {
+                if (inTransaction && command[0].uppercase() !in listOf("EXEC", "MULTI", "DISCARD")) {
                     transactions.add(command)
                     out.write("+QUEUED\r\n".toByteArray())
                     out.flush()
