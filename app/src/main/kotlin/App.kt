@@ -138,10 +138,15 @@ fun main(args: Array<String>) {
                             val key = command[1]
                             val value = command[2]
 
+
                             if (command.size >= 5) {
                                 val type = command[3].uppercase()
                                 val expiry = command[4].toLong()
-                                val ttl = if (type == "EX") System.currentTimeMillis() + (expiry * 1000) else System.currentTimeMillis() + expiry
+                                val ttl = if (type == "EX") {
+                                    System.currentTimeMillis() + (expiry * 1000)
+                                } else {
+                                    System.currentTimeMillis() + expiry
+                                }
                                 store[key] = Pair(value, ttl)
                             } else {
                                 store[key] = Pair(value, null)
@@ -153,16 +158,23 @@ fun main(args: Array<String>) {
                                 }
                             }
 
-                            out.write("+OK\r\n".toByteArray())
-
-
                             val propagated = toRespArray(command)
-                            for (replicaOut in replicaStreams) {
-                                replicaOut.write(propagated)
-                                replicaOut.flush()
+                            val iterator = replicaStreams.iterator()
+                            while (iterator.hasNext()) {
+                                val replicaOut = iterator.next()
+                                try {
+                                    replicaOut.write(propagated)
+                                    replicaOut.flush()
+                                } catch (e: Exception) {
+
+                                    iterator.remove()
+                                }
                             }
+
                             masterOffset += propagated.size
+
                             out.write("+OK\r\n".toByteArray())
+                            out.flush()
                         }
 
                         "GET" -> {
@@ -586,12 +598,15 @@ fun main(args: Array<String>) {
                                 val reader = client.getInputStream().bufferedReader()
                                 try {
                                     while (true) {
-                                        val command = parseCommand(reader) ?: break
-                                        if (command[0].uppercase() == "REPLCONF" && command[1].uppercase() == "ACK") {
-                                            replicaOffsets[out] = command[2].toLong()
+                                        val cmd = parseCommand(reader) ?: break
+                                        if (cmd.size >= 3 && cmd[0].uppercase() == "REPLCONF" && cmd[1].uppercase() == "ACK") {
+                                            val offset = cmd[2].toLongOrNull() ?: 0L
+                                            replicaOffsets[out] = offset
                                         }
                                     }
                                 } catch (e: Exception) {
+
+                                } finally {
                                     replicaStreams.remove(out)
                                     replicaOffsets.remove(out)
                                 }
@@ -601,15 +616,24 @@ fun main(args: Array<String>) {
                             val numNeeded = command[1].toInt()
                             val timeout = command[2].toLong()
 
+                            if (masterOffset == 0L) {
+                                out.write(":${replicaStreams.size}\r\n".toByteArray())
+                                out.flush()
+                                return@thread
+                            }
+
+                            val getAck = toRespArray(listOf("REPLCONF", "GETACK", "*"))
+                            replicaStreams.forEach { it.write(getAck); it.flush() }
+
                             val startTime = System.currentTimeMillis()
                             while (System.currentTimeMillis() - startTime < timeout) {
-                                val acked = replicaOffsets.values.count { it >= masterOffset }
-                                if (acked >= numNeeded) break
+                                val ackedCount = replicaOffsets.values.count { it >= masterOffset }
+                                if (ackedCount >= numNeeded) break
                                 Thread.sleep(10)
                             }
 
                             val finalCount = replicaOffsets.values.count { it >= masterOffset }
-                            out.write(":${finalCount}\r\n".toByteArray()) // MUST start with ':'
+                            out.write(":${finalCount}\r\n".toByteArray())
                             out.flush()
                         }
                     }
@@ -655,16 +679,12 @@ fun executeCommand(command: List<String>, store: MutableMap<String, Pair<String,
 }
 
 fun parseCommand(reader: java.io.BufferedReader): List<String>? {
-    val line = reader.readLine() ?: return null
+    val line = try { reader.readLine() } catch (e: Exception) { null } ?: return null
     if (!line.startsWith("*")) return null
 
-    val numElements = try {
-        line.substring(1).toInt()
-    } catch (e: Exception) {
-        return null
-    }
-
+    val numElements = line.substring(1).trim().toIntOrNull() ?: return null
     val command = mutableListOf<String>()
+
     repeat(numElements) {
         reader.readLine() ?: return null
         val value = reader.readLine() ?: return null
