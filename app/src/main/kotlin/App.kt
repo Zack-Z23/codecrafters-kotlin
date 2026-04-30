@@ -133,15 +133,9 @@ fun main(args: Array<String>) {
                         "PING" -> out.write("+PONG\r\n".toByteArray())
                         "ECHO" -> out.write("$${command[1].length}\r\n${command[1]}\r\n".toByteArray())
                         "SET" -> {
-                            if (command.size >= 5) {
-                                when (command[3].uppercase()) {
-                                    "EX" -> store[command[1]] = Pair(command[2], System.currentTimeMillis() + (command[4].toLong() * 1000))
-                                    "PX" -> store[command[1]] = Pair(command[2], System.currentTimeMillis() + command[4].toLong())
-                                }
-                            } else {
-                                store[command[1]] = Pair(command[2], null)
-                            }
-                            notifyWatchers(command[1], connectionWatches)
+                            val key = command[1]
+                            val value = command[2]
+                            store[key] = Pair(value, null)
                             out.write("+OK\r\n".toByteArray())
 
                             val propagated = toRespArray(command)
@@ -570,7 +564,6 @@ fun main(args: Array<String>) {
                         "PSYNC" -> {
                             val replId = "8371b4fb1155b71f4a04d3e1bc3e18c4a990aeeb"
                             out.write("+FULLRESYNC $replId 0\r\n".toByteArray())
-
                             val emptyRdb = "524544495330303131fa0972656469732d76657205372e322e30fa0a72656469732d62697473c040fa056374696d65c26d08bc65fa08757365642d6d656dc2b0c41000fa08616f662d62617365c000fff06e3bfec0ff5aa2"
                             val rdbBytes = emptyRdb.chunked(2).map { it.toInt(16).toByte() }.toByteArray()
                             out.write("\$${rdbBytes.size}\r\n".toByteArray())
@@ -578,6 +571,17 @@ fun main(args: Array<String>) {
                             out.flush()
 
                             replicaStreams.add(out)
+                        }
+                        "WAIT" -> {
+                            val numReplicasNeeded = command[1].toInt()
+                            val timeout = command[2].toLong()
+
+                            if (numReplicasNeeded == 0 || replicaStreams.isEmpty()) {
+                                out.write(":0\r\n".toByteArray())
+                            } else {
+                                out.write(":${replicaStreams.size}\r\n".toByteArray())
+                            }
+                            out.flush()
                         }
                     }
                     out.flush()
@@ -645,11 +649,11 @@ fun parseCommand(reader: BufferedReader): List<String> {
     return result
 }
 
-fun toRespArray(parts: List<String>): ByteArray {
+fun toRespArray(command: List<String>): ByteArray {
     val sb = StringBuilder()
-    sb.append("*${parts.size}\r\n")
-    for (part in parts) {
-        sb.append("\$${part.length}\r\n$part\r\n")
+    sb.append("*${command.size}\r\n")
+    for (arg in command) {
+        sb.append("$${arg.length}\r\n$arg\r\n")
     }
     return sb.toString().toByteArray()
 }
@@ -681,7 +685,7 @@ fun parseCommandFromStream(input: java.io.InputStream): List<String>? {
     val command = mutableListOf<String>()
 
     repeat(numElements) {
-        input.read() // consume '$'
+        input.read()
         val length = readRawLine(input).toInt()
         val bytes = ByteArray(length)
         var read = 0
@@ -689,8 +693,8 @@ fun parseCommandFromStream(input: java.io.InputStream): List<String>? {
             val r = input.read(bytes, read, length - read)
             read += r
         }
-        input.read() // \r
-        input.read() // \n
+        input.read()
+        input.read()
         command.add(String(bytes))
     }
     return command
