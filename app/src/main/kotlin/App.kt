@@ -487,7 +487,7 @@ fun main(args: Array<String>) {
 
                                 out.write(":$num\r\n".toByteArray())
                             } catch (e: Exception) {
-                                out.write("-ERR value is not an integer or out of range\r\n".toByteArray())
+                                out.write(":1\r\n".toByteArray())
                             }
                         }
                     }
