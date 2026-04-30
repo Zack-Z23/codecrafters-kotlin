@@ -59,19 +59,37 @@ fun main(args: Array<String>) {
 
         thread {
             val reader = masterIn.bufferedReader()
+
+            val masterOutStream = masterSocket.getOutputStream()
+
             while (true) {
                 try {
                     val command = parseCommand(reader) ?: break
-                    if (command.isNotEmpty() && command[0].uppercase() == "SET") {
-                        val key = command[1]
-                        val value = command[2]
-                        if (command.size >= 5) {
-                            val type = command[3].uppercase()
-                            val expiry = command[4].toLong()
-                            val ttl = if (type == "EX") System.currentTimeMillis() + (expiry * 1000) else System.currentTimeMillis() + expiry
-                            store[key] = Pair(value, ttl)
-                        } else {
-                            store[key] = Pair(value, null)
+                    val cmdName = command[0].uppercase()
+
+                    when (cmdName) {
+                        "SET" -> {
+                            val key = command[1]
+                            val value = command[2]
+                            if (command.size >= 5) {
+                                val type = command[3].uppercase()
+                                val expiry = command[4].toLong()
+                                val ttl = if (type == "EX") System.currentTimeMillis() + (expiry * 1000) else System.currentTimeMillis() + expiry
+                                store[key] = Pair(value, ttl)
+                            } else {
+                                store[key] = Pair(value, null)
+                            }
+                        }
+                        "REPLCONF" -> {
+
+                            if (command.size >= 3 && command[1].uppercase() == "GETACK") {
+                                val response = "*3\r\n$8\r\nREPLCONF\r\n$3\r\nACK\r\n$1\r\n0\r\n"
+                                masterOutStream.write(response.toByteArray())
+                                masterOutStream.flush()
+                            }
+                        }
+                        "PING" -> {
+                          
                         }
                     }
                 } catch (e: Exception) {
