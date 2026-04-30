@@ -571,6 +571,7 @@ fun main(args: Array<String>) {
                         "PSYNC" -> {
                             val replId = "8371b4fb1155b71f4a04d3e1bc3e18c4a990aeeb"
                             out.write("+FULLRESYNC $replId 0\r\n".toByteArray())
+
                             val emptyRdb = "524544495330303131fa0972656469732d76657205372e322e30fa0a72656469732d62697473c040fa056374696d65c26d08bc65fa08757365642d6d656dc2b0c41000fa08616f662d62617365c000fff06e3bfec0ff5aa2"
                             val rdbBytes = emptyRdb.chunked(2).map { it.toInt(16).toByte() }.toByteArray()
                             out.write("\$${rdbBytes.size}\r\n".toByteArray())
@@ -583,11 +584,7 @@ fun main(args: Array<String>) {
                             val numReplicasNeeded = command[1].toInt()
                             val timeout = command[2].toLong()
 
-                            if (numReplicasNeeded == 0 || replicaStreams.isEmpty()) {
-                                out.write(":0\r\n".toByteArray())
-                            } else {
-                                out.write(":${replicaStreams.size}\r\n".toByteArray())
-                            }
+                            out.write(":${replicaStreams.size}\r\n".toByteArray())
                             out.flush()
                         }
                     }
