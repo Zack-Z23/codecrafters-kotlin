@@ -598,30 +598,18 @@ fun main(args: Array<String>) {
                             }
                         }
                         "WAIT" -> {
-                            val numReplicasNeeded = command[1].toInt()
+                            val numNeeded = command[1].toInt()
                             val timeout = command[2].toLong()
 
-                            if (masterOffset == 0L) {
-                                out.write(":${replicaStreams.size}\r\n".toByteArray())
-                            } else {
-                                val getAck = toRespArray(listOf("REPLCONF", "GETACK", "*"))
-                                for (replicaOut in replicaStreams) {
-                                    replicaOut.write(getAck)
-                                    replicaOut.flush()
-                                }
-
-                                val startTime = System.currentTimeMillis()
-
-                                while (System.currentTimeMillis() - startTime < timeout) {
-                                    val acked = replicaOffsets.values.count { it >= masterOffset }
-                                    if (acked >= numReplicasNeeded) break
-                                    Thread.sleep(10)
-                                }
-
-                                val finalCount = replicaOffsets.values.count { it >= masterOffset }
-
-                                out.write(":${finalCount}\r\n".toByteArray())
+                            val startTime = System.currentTimeMillis()
+                            while (System.currentTimeMillis() - startTime < timeout) {
+                                val acked = replicaOffsets.values.count { it >= masterOffset }
+                                if (acked >= numNeeded) break
+                                Thread.sleep(10)
                             }
+
+                            val finalCount = replicaOffsets.values.count { it >= masterOffset }
+                            out.write(":${finalCount}\r\n".toByteArray()) // MUST start with ':'
                             out.flush()
                         }
                     }
