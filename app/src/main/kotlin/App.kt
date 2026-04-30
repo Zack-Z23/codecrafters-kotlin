@@ -554,17 +554,34 @@ fun executeCommand(command: List<String>, store: MutableMap<String, Pair<String,
     return when (command[0].uppercase()) {
 
         "SET" -> {
-            store[command[1]] = Pair(command[2], null)
+            if (command.size >= 5 && command[3] != null) {
+                when (command[3].uppercase()) {
+                    "EX" -> store[command[1]] = Pair(command[2], System.currentTimeMillis() + (command[4].toLong() * 1000))
+                    "PX" -> store[command[1]] = Pair(command[2], System.currentTimeMillis() + command[4].toLong())
+                }
+            } else {
+                store[command[1]] = Pair(command[2], null)
+            }
             "+OK\r\n"
         }
 
         "INCR" -> {
             val key = command[1]
             val entry = store[key]
-            val value = entry?.first?.toIntOrNull() ?: 0
-            val newValue = value + 1
-            store[key] = Pair(newValue.toString(), null)
-            ":$newValue\r\n"
+
+            if (entry == null) {
+                store[key] = Pair("1", null)
+                ":1\r\n"
+            } else {
+                val num = entry.first.toLongOrNull()
+                if (num == null) {
+                    "-ERR value is not an integer or out of range\r\n"
+                } else {
+                    val newVal = num + 1
+                    store[key] = Pair(newVal.toString(), entry.second)
+                    ":$newVal\r\n"
+                }
+            }
         }
 
         "GET" -> {
