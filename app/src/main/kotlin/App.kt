@@ -71,20 +71,25 @@ fun main(args: Array<String>) {
                         "ECHO" -> out.write("$${command[1].length}\r\n${command[1]}\r\n".toByteArray())
                         "SET" -> {
                             if (command.size >= 5) {
-                                if (command[3] != null) {
-                                    when (command[3].uppercase()) {
-                                        "EX" -> store[command[1]] =
-                                            Pair(command[2], System.currentTimeMillis() + (command[4].toLong() * 1000))
-                                        "PX" -> store[command[1]] =
-                                            Pair(command[2], System.currentTimeMillis() + command[4].toLong())
-                                    }
+                                when (command[3].uppercase()) {
+                                    "EX" -> store[command[1]] = Pair(command[2], System.currentTimeMillis() + (command[4].toLong() * 1000))
+                                    "PX" -> store[command[1]] = Pair(command[2], System.currentTimeMillis() + command[4].toLong())
                                 }
-                                out.write("+OK\r\n".toByteArray())
                             } else {
                                 store[command[1]] = Pair(command[2], null)
-                                out.write("+OK\r\n".toByteArray())
                             }
                             notifyWatchers(command[1], connectionWatches)
+                            out.write("+OK\r\n".toByteArray())
+
+                            val propagated = toRespArray(command)
+                            for (replicaOut in replicaStreams) {
+                                try {
+                                    replicaOut.write(propagated)
+                                    replicaOut.flush()
+                                } catch (e: Exception) {
+                                    replicaStreams.remove(replicaOut)
+                                }
+                            }
                         }
 
                         "GET" -> {
@@ -571,6 +576,14 @@ fun parseCommand(reader: BufferedReader): List<String> {
         result.add(value)
     }
     return result
+}
+fun toRespArray(parts: List<String>): ByteArray {
+    val sb = StringBuilder()
+    sb.append("*${parts.size}\r\n")
+    for (part in parts) {
+        sb.append("\$${part.length}\r\n$part\r\n")
+    }
+    return sb.toString().toByteArray()
 }
 
 fun notifyWatchers(key: String, connectionWatches: java.util.concurrent.ConcurrentHashMap<Long, Pair<MutableSet<String>, java.util.concurrent.atomic.AtomicBoolean>>) {
