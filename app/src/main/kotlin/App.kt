@@ -456,6 +456,11 @@ fun main(args: Array<String>) {
                                 out.write("+OK\r\n".toByteArray())
                             }
                         }
+                        "UNWATCH" -> {
+                            watchedKeys.clear()
+                            dirtyFlag.set(false)
+                            out.write("+OK\r\n".toByteArray())
+                        }
                     }
                     out.flush()
                 }
