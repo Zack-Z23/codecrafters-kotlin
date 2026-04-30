@@ -606,15 +606,15 @@ fun main(args: Array<String>) {
                             val numNeeded = command[1].toInt()
                             val timeout = command[2].toLong()
 
-                            // Capture target offset BEFORE sending GETACK
+                            // 1. Capture the offset before sending GETACK
                             val targetOffset = masterOffset
 
-                            // If no writes have happened, they are in sync at offset 0
+                            // 2. If no writes happened, return immediately
                             if (targetOffset == 0L) {
                                 out.write(":${replicaStreams.size}\r\n".toByteArray())
                                 out.flush()
                             } else {
-                                // Send GETACK to all replicas
+                                // 3. Send GETACK to all replicas
                                 val getAck = toRespArray(listOf("REPLCONF", "GETACK", "*"))
                                 for (replicaOut in replicaStreams) {
                                     try {
@@ -623,17 +623,18 @@ fun main(args: Array<String>) {
                                     } catch (e: Exception) { }
                                 }
 
+                                // 4. Polling with a higher frequency[cite: 1]
                                 val startTime = System.currentTimeMillis()
                                 var currentAcked = 0
 
-                                // Poll until timeout or target reached
                                 while (System.currentTimeMillis() - startTime < timeout) {
+                                    // Check how many replicas have reached the target[cite: 1]
                                     currentAcked = replicaOffsets.values.count { it >= targetOffset }
                                     if (currentAcked >= numNeeded) break
-                                    Thread.sleep(10) // Give background threads time to parse incoming ACKs
+                                    Thread.sleep(10)
                                 }
 
-                                // Final count check
+                                // 5. Final check and RESP Integer response[cite: 1]
                                 val finalAcked = replicaOffsets.values.count { it >= targetOffset }
                                 out.write(":$finalAcked\r\n".toByteArray())
                                 out.flush()
