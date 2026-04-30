@@ -74,18 +74,14 @@ fun main(args: Array<String>) {
                         }
                         var i = 2
                         while (command.size >= 3 && i < command.size) {
-
                             listOflists[command[1]]!!.add(command[i])
                             i++
-
-                            synchronized(listOflists) {
-                                (listOflists as Object).notifyAll()
-                            }
                         }
-
+                        synchronized(listOflists) {
+                            (listOflists as Object).notifyAll()
+                        }
                         out.write(":${listOflists[command[1]]?.size}\r\n".toByteArray())
                     }
-
                     "LRANGE" -> {
                         var startIndex: Int = command[2].toInt()
                         var endIndex = command[3].toInt()
@@ -176,34 +172,33 @@ fun main(args: Array<String>) {
                     "BLPOP" -> {
                         val key = command[1]
                         val timeout = command[2].toDouble()
-                        val list = listOflists.getOrPut(key) { mutableListOf() }
+                        val startTime = System.currentTimeMillis()
 
-                        synchronized(list) {
-                            if (list.isEmpty()) {
+                        synchronized(listOflists) {
+                            while (true) {
+                                val list = listOflists[key]
+                                if (list != null && list.isNotEmpty()) {
+                                    val value = list.removeFirst()
+                                    out.write("*2\r\n".toByteArray())
+                                    out.write("$${key.length}\r\n$key\r\n".toByteArray())
+                                    out.write("$${value.length}\r\n$value\r\n".toByteArray())
+                                    out.flush()
+                                    break
+                                }
+
                                 if (timeout == 0.0) {
-                                    while (list.isEmpty()) {
-                                        (list as Object).wait()
-                                    }
+                                    (listOflists as Object).wait()
                                 } else {
-                                    val waitTime = (timeout * 1000).toLong()
-                                    val start = System.currentTimeMillis()
-
-                                    while (list.isEmpty()) {
-                                        val elapsed = System.currentTimeMillis() - start
-                                        val remaining = waitTime - elapsed
-                                        if (remaining <= 0) {
-                                            out.write("*-1\r\n".toByteArray())
-                                            return@thread
-                                        }
-                                        (list as Object).wait(remaining)
+                                    val elapsed = System.currentTimeMillis() - startTime
+                                    val remaining = (timeout * 1000).toLong() - elapsed
+                                    if (remaining <= 0) {
+                                        out.write("*-1\r\n".toByteArray())
+                                        out.flush()
+                                        break
                                     }
+                                    (listOflists as Object).wait(remaining)
                                 }
                             }
-
-                            val value = list.removeFirst()
-                            out.write("*2\r\n".toByteArray())
-                            out.write("$${key.length}\r\n$key\r\n".toByteArray())
-                            out.write("$${value.length}\r\n$value\r\n".toByteArray())
                         }
                     }
 
