@@ -8,6 +8,15 @@ fun main(args: Array<String>) {
     System.err.println("Logs from your program will appear here!")
     val port = args.indexOf("--port").takeIf { it >= 0 }?.let { args[it + 1].toInt() } ?: 6379
     val role = if (args.contains("--replicaof")) "slave" else "master"
+
+    if (role == "slave") {
+        val replicaof = args[args.indexOf("--replicaof") + 1]
+        val (masterHost, masterPort) = replicaof.split(" ")
+        val masterSocket = java.net.Socket(masterHost, masterPort.toInt())
+        val masterOut = masterSocket.getOutputStream()
+        masterOut.write("*1\r\n\$4\r\nPING\r\n".toByteArray())
+        masterOut.flush()
+    }
     var serverSocket = ServerSocket(port)
     serverSocket.reuseAddress = true
 
