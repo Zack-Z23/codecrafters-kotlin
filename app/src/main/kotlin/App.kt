@@ -600,7 +600,6 @@ fun main(args: Array<String>) {
                                 }
                             }
                         }
-
                         "WAIT" -> {
                             val numNeeded = command[1].toInt()
                             val timeout = command[2].toLong()
@@ -619,15 +618,16 @@ fun main(args: Array<String>) {
                                 }
 
                                 val startTime = System.currentTimeMillis()
-                                var currentAcked = 0
+                                var finalAcked: Int
 
-                                while (System.currentTimeMillis() - startTime < timeout) {
-                                    currentAcked = replicaOffsets.values.count { it >= targetOffset }
-                                    if (currentAcked >= numNeeded) break
+                                val deadline = if (timeout == 0L) 500L else timeout
+                                while (true) {
+                                    finalAcked = replicaOffsets.values.count { it >= targetOffset }
+                                    if (finalAcked >= numNeeded) break
+                                    if (System.currentTimeMillis() - startTime >= deadline) break
                                     Thread.sleep(10)
                                 }
 
-                                val finalAcked = replicaOffsets.values.count { it >= targetOffset }
                                 out.write(":$finalAcked\r\n".toByteArray())
                                 out.flush()
                             }
