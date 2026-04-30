@@ -37,6 +37,7 @@ fun main(args: Array<String>) {
     serverSocket.reuseAddress = true
 
     val store = java.util.concurrent.ConcurrentHashMap<String, Pair<String, Long?>>()
+    val replicaStreams = java.util.concurrent.CopyOnWriteArrayList<java.io.OutputStream>()
     val listOflists = java.util.concurrent.ConcurrentHashMap<String, MutableList<String>>()
     val streams = java.util.concurrent.ConcurrentHashMap<String, MutableList<Pair<String, Map<String, String>>>>()
     val connectionWatches = java.util.concurrent.ConcurrentHashMap<Long, Pair<MutableSet<String>, java.util.concurrent.atomic.AtomicBoolean>>()
@@ -503,6 +504,8 @@ fun main(args: Array<String>) {
                             out.write("\$${rdbBytes.size}\r\n".toByteArray())
                             out.write(rdbBytes)
                             out.flush()
+
+                            replicaStreams.add(out)
                         }
                     }
                     out.flush()
