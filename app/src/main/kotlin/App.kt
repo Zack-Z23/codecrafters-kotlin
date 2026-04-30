@@ -28,6 +28,10 @@ fun main(args: Array<String>) {
         masterOut.write("*3\r\n\$8\r\nREPLCONF\r\n\$4\r\ncapa\r\n\$6\r\npsync2\r\n".toByteArray())
         masterOut.flush()
         masterIn.readLine()
+        
+        masterOut.write("*3\r\n\$5\r\nPSYNC\r\n\$1\r\n?\r\n\$2\r\n-1\r\n".toByteArray())
+        masterOut.flush()
+        masterIn.readLine()
     }
     var serverSocket = ServerSocket(port)
     serverSocket.reuseAddress = true
