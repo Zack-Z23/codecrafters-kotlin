@@ -14,8 +14,20 @@ fun main(args: Array<String>) {
         val (masterHost, masterPort) = replicaof.split(" ")
         val masterSocket = java.net.Socket(masterHost, masterPort.toInt())
         val masterOut = masterSocket.getOutputStream()
+        val masterIn = masterSocket.getInputStream().bufferedReader()
+
         masterOut.write("*1\r\n\$4\r\nPING\r\n".toByteArray())
         masterOut.flush()
+        masterIn.readLine()
+
+        val replconf1 = "*3\r\n\$8\r\nREPLCONF\r\n\$14\r\nlistening-port\r\n\$${port.toString().length}\r\n$port\r\n"
+        masterOut.write(replconf1.toByteArray())
+        masterOut.flush()
+        masterIn.readLine()
+
+        masterOut.write("*3\r\n\$8\r\nREPLCONF\r\n\$4\r\ncapa\r\n\$6\r\npsync2\r\n".toByteArray())
+        masterOut.flush()
+        masterIn.readLine()
     }
     var serverSocket = ServerSocket(port)
     serverSocket.reuseAddress = true
