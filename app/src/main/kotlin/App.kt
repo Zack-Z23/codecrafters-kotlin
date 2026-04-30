@@ -17,13 +17,13 @@ fun main(args: Array<String>) {
     val store = java.util.concurrent.ConcurrentHashMap<String, Pair<String, Long?>>()
     val listOflists = java.util.concurrent.ConcurrentHashMap<String, MutableList<String>>()
     val streams = java.util.concurrent.ConcurrentHashMap<String, MutableList<Pair<String, Map<String, String>>>>()
-    var inTransaction = false
-    val transactions = mutableListOf<List<String>>()
     while (true) {
         val client = serverSocket.accept()
         thread {
             val input = client.getInputStream()
             val out = client.getOutputStream()
+            var inTransaction = false
+            val transactions = mutableListOf<List<String>>()
             while (true) {
                 val command = parseCommand(input.bufferedReader())
                 if (inTransaction && command[0].uppercase() !in listOf("EXEC", "MULTI")) {
