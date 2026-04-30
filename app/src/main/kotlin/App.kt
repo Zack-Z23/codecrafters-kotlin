@@ -494,6 +494,9 @@ fun main(args: Array<String>) {
                             }
                         }
                     }
+                    "MULTI" -> {
+                        out.write("+OK\r\n".toByteArray())
+                    }
                 }
                 out.flush()
             }
