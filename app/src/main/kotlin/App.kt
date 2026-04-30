@@ -478,7 +478,10 @@ fun main(args: Array<String>) {
                         val key = command[1]
                         val entry = store[key]
 
-                        if (entry != null) {
+                        if (entry == null) {
+                            store[key] = Pair("1", null)
+                            out.write(":1\r\n".toByteArray())
+                        } else {
                             val value = entry.first
 
                             try {
@@ -487,7 +490,7 @@ fun main(args: Array<String>) {
 
                                 out.write(":$num\r\n".toByteArray())
                             } catch (e: Exception) {
-                                out.write(":1\r\n".toByteArray())
+                                out.write("-ERR value is not an integer or out of range\r\n".toByteArray())
                             }
                         }
                     }
