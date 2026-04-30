@@ -17,6 +17,7 @@ fun main(args: Array<String>) {
     val store = java.util.concurrent.ConcurrentHashMap<String, Pair<String, Long?>>()
     val listOflists = java.util.concurrent.ConcurrentHashMap<String, MutableList<String>>()
     val streams = java.util.concurrent.ConcurrentHashMap<String, MutableList<Pair<String, Map<String, String>>>>()
+    var inTransaction = false
     while (true) {
         val client = serverSocket.accept()
         thread {
@@ -495,7 +496,17 @@ fun main(args: Array<String>) {
                         }
                     }
                     "MULTI" -> {
+                        inTransaction = true
                         out.write("+OK\r\n".toByteArray())
+                    }
+                    "EXEC" -> {
+                        if(!inTransaction) {
+                            out.write("-ERR EXEC without MULTI\r\n".toByteArray())
+                        }
+                        else{
+                            out.write("*0\r\n".toByteArray())
+                            inTransaction = false
+                        }
                     }
                 }
                 out.flush()
