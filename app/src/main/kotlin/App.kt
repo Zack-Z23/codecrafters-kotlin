@@ -533,6 +533,15 @@ fun main(args: Array<String>) {
                         transactions.clear()
                         inTransaction = false
                     }
+                    "DISCARD" -> {
+                        if (!inTransaction) {
+                            out.write("-ERR DISCARD without MULTI\r\n".toByteArray())
+                        } else {
+                            transactions.clear()
+                            inTransaction = false
+                            out.write("+OK\r\n".toByteArray())
+                        }
+                    }
                 }
                 out.flush()
             }
