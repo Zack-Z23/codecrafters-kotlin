@@ -23,6 +23,8 @@ fun main(args: Array<String>) {
     System.err.println("Logs from your program will appear here!")
     val port = args.indexOf("--port").takeIf { it >= 0 }?.let { args[it + 1].toInt() } ?: 6379
     val role = if (args.contains("--replicaof")) "slave" else "master"
+    val dir = args.indexOf("--dir").takeIf { it >= 0 }?.let { args[it + 1] } ?: ""
+    val dbfilename = args.indexOf("--dbfilename").takeIf { it >= 0 }?.let { args[it + 1] } ?: ""
     val serverSocket = ServerSocket(port)
     serverSocket.reuseAddress = true
 
@@ -635,6 +637,23 @@ fun main(args: Array<String>) {
 
                                 out.write(":$finalAcked\r\n".toByteArray())
                                 out.flush()
+                            }
+                        }
+                        "CONFIG" -> {
+                            if (command.size >= 3 && command[1].uppercase() == "GET") {
+                                val param = command[2].lowercase()
+                                val value = when (param) {
+                                    "dir" -> dir
+                                    "dbfilename" -> dbfilename
+                                    else -> null
+                                }
+                                if (value != null) {
+                                    out.write("*2\r\n$${param.length}\r\n$param\r\n$${value.length}\r\n$value\r\n".toByteArray())
+                                } else {
+                                    out.write("*0\r\n".toByteArray())
+                                }
+                            } else {
+                                out.write("*0\r\n".toByteArray())
                             }
                         }
                     }
