@@ -25,10 +25,12 @@ fun main(args: Array<String>) {
     val role = if (args.contains("--replicaof")) "slave" else "master"
     val dir = args.indexOf("--dir").takeIf { it >= 0 }?.let { args[it + 1] } ?: ""
     val dbfilename = args.indexOf("--dbfilename").takeIf { it >= 0 }?.let { args[it + 1] } ?: ""
+
+    val store = java.util.concurrent.ConcurrentHashMap<String, Pair<String, Long?>>()
+    store.putAll(loadRdb(dir, dbfilename))
     val serverSocket = ServerSocket(port)
     serverSocket.reuseAddress = true
 
-    val store = java.util.concurrent.ConcurrentHashMap<String, Pair<String, Long?>>()
     var masterOffset = 0L
     val replicaOffsets = java.util.concurrent.ConcurrentHashMap<java.io.OutputStream, Long>()
     val replicaStreams = java.util.concurrent.CopyOnWriteArrayList<java.io.OutputStream>()
@@ -656,6 +658,18 @@ fun main(args: Array<String>) {
                                 out.write("*0\r\n".toByteArray())
                             }
                         }
+                        "KEYS" -> {
+                            val pattern = command[1]
+                            val keys = if (pattern == "*") {
+                                store.keys.toList()
+                            } else {
+                                store.keys.filter { it == pattern }
+                            }
+                            out.write("*${keys.size}\r\n".toByteArray())
+                            for (key in keys) {
+                                out.write("$${key.length}\r\n$key\r\n".toByteArray())
+                            }
+                        }
                     }
                     out.flush()
                 }
@@ -766,4 +780,93 @@ fun parseCommandFromStream(input: java.io.InputStream): List<String>? {
         command.add(String(bytes))
     }
     return command
+}
+fun loadRdb(dir: String, dbfilename: String): Map<String, Pair<String, Long?>> {
+    val result = mutableMapOf<String, Pair<String, Long?>>()
+    if (dir.isEmpty() || dbfilename.isEmpty()) return result
+
+    val file = java.io.File(dir, dbfilename)
+    if (!file.exists()) return result
+
+    val bytes = file.readBytes()
+    var i = 0
+
+    fun readByte() = bytes[i++].toInt() and 0xFF
+
+    fun readLength(): Int {
+        val first = readByte()
+        return when ((first and 0xC0) shr 6) {
+            0 -> first and 0x3F
+            1 -> ((first and 0x3F) shl 8) or readByte()
+            2 -> {
+                var len = 0
+                repeat(4) { len = (len shl 8) or readByte() }
+                len
+            }
+            else -> -(first and 0x3F) // encoded integer type
+        }
+    }
+
+    fun readString(): String {
+        val first = bytes[i].toInt() and 0xFF
+        return if ((first and 0xC0) == 0xC0) {
+            i++
+            val encType = first and 0x3F
+            when (encType) {
+                0 -> readByte().toString()
+                1 -> (readByte() or (readByte() shl 8)).toString()
+                2 -> (readByte() or (readByte() shl 8) or (readByte() shl 16) or (readByte() shl 24)).toString()
+                else -> ""
+            }
+        } else {
+            val len = readLength()
+            val str = String(bytes, i, len)
+            i += len
+            str
+        }
+    }
+    i = 9
+
+    while (i < bytes.size) {
+        when (val opcode = readByte()) {
+            0xFA -> { readString(); readString() }
+            0xFE -> readLength()
+            0xFB -> { readLength(); readLength() }
+            0xFF -> break
+            else -> {
+
+                var expiry: Long? = null
+                var valueType = opcode
+
+                if (opcode == 0xFC) {
+
+                    var ms = 0L
+                    repeat(8) { shift -> ms = ms or ((readByte().toLong()) shl (shift * 8)) }
+                    expiry = ms
+                    valueType = readByte()
+                } else if (opcode == 0xFD) {
+
+                    var sec = 0L
+                    repeat(4) { shift -> sec = sec or ((readByte().toLong()) shl (shift * 8)) }
+                    expiry = sec * 1000
+                    valueType = readByte()
+                }
+
+                val key = readString()
+                val value = when (valueType) {
+                    0 -> readString()
+                    else -> { readString(); null }
+                }
+
+                if (value != null) {
+                 
+                    if (expiry == null || expiry > System.currentTimeMillis()) {
+                        result[key] = Pair(value, expiry)
+                    }
+                }
+            }
+        }
+    }
+
+    return result
 }
