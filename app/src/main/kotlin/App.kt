@@ -505,6 +505,12 @@ fun main(args: Array<String>) {
                         out.write("+OK\r\n".toByteArray())
                     }
                     "EXEC" -> {
+                        if (!inTransaction) {
+                            out.write("-ERR EXEC without MULTI\r\n".toByteArray())
+                            out.flush()
+                            return@thread
+                        }
+
                         val responses = mutableListOf<String>()
 
                         for (cmd in transactions) {
