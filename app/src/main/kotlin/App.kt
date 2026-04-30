@@ -121,8 +121,8 @@ fun main(args: Array<String>) {
             var inTransaction = false
             val transactions = mutableListOf<List<String>?>()
 
+            var isReplicaConnection = false
             try {
-                var isReplicaConnection = false
                 while (true) {
                     val command: List<String> = parseCommand(reader) ?: break
                     if (inTransaction && command?.get(0)?.uppercase() !in listOf("EXEC", "MULTI", "DISCARD", "WATCH")) {
@@ -642,7 +642,10 @@ fun main(args: Array<String>) {
                 }
             } finally {
                 connectionWatches.remove(connectionId)
-                client.close()
+
+                if(!isReplicaConnection) {
+                    client.close()
+                }
             }
         }
     }
