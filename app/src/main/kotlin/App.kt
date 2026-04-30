@@ -666,7 +666,7 @@ fun executeCommand(command: List<String>, store: MutableMap<String, Pair<String,
     }
 }
 
-fun parseCommand(reader: java.io.BufferedReader): List<String>? {
+fun parseCommand(reader: java.io.BufferedReader): List<String> {
     val line = reader.readLine() ?: return null
     if (!line.startsWith("*")) return null
 
